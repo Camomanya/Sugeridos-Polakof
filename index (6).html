@@ -1,0 +1,3055 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Orden Sugerida — Polakof</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap');
+
+  :root {
+    --bg: #f5f4f0;
+    --surface: #ffffff;
+    --border: #e2e0d8;
+    --border-strong: #c8c5b8;
+    --text: #1a1916;
+    --text-muted: #7a7870;
+    --green: #2d6a4f;
+    --green-bg: #edf7f1;
+    --green-light: #d8f0e3;
+    --amber: #92400e;
+    --amber-bg: #fef3c7;
+    --red: #991b1b;
+    --red-bg: #fef2f2;
+    --blue: #1e40af;
+    --blue-bg: #eff6ff;
+    --accent: #2d6a4f;
+    --radius: 10px;
+    --radius-sm: 6px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    font-size: 14px;
+    min-height: 100vh;
+  }
+
+  /* HEADER */
+  .header {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 0 2rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 56px;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+  .header-logo {
+    font-size: 15px;
+    font-weight: 600;
+    letter-spacing: -0.3px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    color: var(--text);
+  }
+  .header-logo .dot {
+    width: 8px; height: 8px;
+    background: var(--accent);
+    border-radius: 50%;
+  }
+  .header-badge {
+    font-size: 11px;
+    background: var(--green-bg);
+    color: var(--green);
+    border: 1px solid var(--green-light);
+    padding: 3px 10px;
+    border-radius: 100px;
+    font-weight: 500;
+  }
+
+  /* TABS */
+  .tabs-bar {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 0 2rem;
+    display: flex;
+    gap: 0;
+  }
+  .tab-btn {
+    padding: 12px 20px;
+    font-size: 13px;
+    font-family: 'DM Sans', sans-serif;
+    font-weight: 500;
+    color: var(--text-muted);
+    background: none;
+    border: none;
+    border-bottom: 2px solid transparent;
+    cursor: pointer;
+    transition: all 0.15s;
+    display: flex;
+    align-items: center;
+    gap: 7px;
+  }
+  .tab-btn:hover { color: var(--text); }
+  .tab-btn.active {
+    color: var(--accent);
+    border-bottom-color: var(--accent);
+  }
+  .tab-btn .tab-count {
+    background: var(--green-bg);
+    color: var(--green);
+    font-size: 10px;
+    font-weight: 600;
+    padding: 1px 6px;
+    border-radius: 100px;
+    min-width: 18px;
+    text-align: center;
+  }
+
+  /* LAYOUT */
+  .main { max-width: 1100px; margin: 0 auto; padding: 2rem; }
+  .section { display: none; }
+  .section.active { display: block; }
+
+  /* CARDS */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1.25rem 1.5rem;
+    margin-bottom: 1rem;
+  }
+  .card-title {
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+    color: var(--text-muted);
+    margin-bottom: 1rem;
+    display: flex;
+    align-items: center;
+    gap: 7px;
+  }
+  .card-title svg { opacity: 0.6; }
+
+  /* UPLOAD */
+  .upload-zone {
+    border: 2px dashed var(--border-strong);
+    border-radius: var(--radius);
+    padding: 2.5rem 1rem;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s;
+    margin-bottom: 1rem;
+  }
+  .upload-zone:hover {
+    border-color: var(--accent);
+    background: var(--green-bg);
+  }
+  .upload-zone.drag-over {
+    border-color: var(--accent);
+    background: var(--green-bg);
+  }
+  .upload-icon {
+    width: 40px; height: 40px;
+    background: var(--green-bg);
+    border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    margin: 0 auto 12px;
+    color: var(--accent);
+  }
+  .upload-title { font-size: 14px; font-weight: 500; margin-bottom: 4px; }
+  .upload-sub { font-size: 12px; color: var(--text-muted); }
+
+  /* BUTTONS */
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    padding: 9px 18px;
+    border-radius: var(--radius-sm);
+    font-size: 13px;
+    font-weight: 500;
+    font-family: 'DM Sans', sans-serif;
+    cursor: pointer;
+    border: 1px solid var(--border-strong);
+    background: var(--surface);
+    color: var(--text);
+    transition: all 0.15s;
+  }
+  .btn:hover { background: var(--bg); }
+  .btn-primary {
+    background: var(--accent);
+    color: white;
+    border-color: var(--accent);
+  }
+  .btn-primary:hover { background: #235a42; border-color: #235a42; }
+  .btn-full { width: 100%; justify-content: center; }
+  .btn-sm { padding: 5px 10px; font-size: 12px; }
+  .btn-ghost { border-color: transparent; color: var(--text-muted); }
+  .btn-ghost:hover { background: var(--bg); color: var(--text); border-color: var(--border); }
+
+  /* DIVIDER */
+  .divider {
+    display: flex; align-items: center; gap: 12px;
+    color: var(--text-muted); font-size: 12px;
+    margin: 1rem 0;
+  }
+  .divider::before, .divider::after {
+    content: ''; flex: 1;
+    height: 1px; background: var(--border);
+  }
+
+  /* CHIPS */
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+  .chip {
+    display: inline-flex; align-items: center; gap: 5px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 100px;
+    padding: 4px 10px 4px 12px;
+    font-size: 12px;
+    font-weight: 500;
+  }
+  .chip-del {
+    background: none; border: none; cursor: pointer;
+    color: var(--text-muted); font-size: 14px; line-height: 1;
+    padding: 0; margin-left: 2px;
+    transition: color 0.1s;
+  }
+  .chip-del:hover { color: var(--red); }
+
+  /* METRICS */
+  .metrics { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 1rem; }
+  .metric {
+    background: var(--bg);
+    border-radius: var(--radius-sm);
+    padding: 12px 14px;
+  }
+  .metric-val { font-size: 24px; font-weight: 600; font-family: 'DM Mono', monospace; letter-spacing: -1px; }
+  .metric-lbl { font-size: 11px; color: var(--text-muted); margin-top: 2px; font-weight: 500; }
+
+  /* TABLE */
+  .table-wrap { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th {
+    text-align: left; padding: 8px 10px;
+    font-size: 11px; font-weight: 600;
+    text-transform: uppercase; letter-spacing: 0.5px;
+    color: var(--text-muted);
+    border-bottom: 1px solid var(--border);
+  }
+  td {
+    padding: 9px 10px;
+    border-bottom: 1px solid var(--border);
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  tr:last-child td { border-bottom: none; }
+  tr.zero td { color: var(--text-muted); }
+  tr:hover td { background: var(--bg); }
+
+  /* STOCK INPUT */
+  .stock-input {
+    width: 80px;
+    padding: 5px 8px;
+    font-size: 13px;
+    font-family: 'DM Mono', monospace;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    background: var(--surface);
+    color: var(--text);
+    text-align: right;
+  }
+  .stock-input:focus {
+    outline: none;
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(45,106,79,0.1);
+  }
+
+  /* BADGES */
+  .badge {
+    display: inline-block; padding: 2px 9px;
+    border-radius: 100px; font-size: 11px; font-weight: 600;
+  }
+  .badge-ok { background: var(--green-bg); color: var(--green); }
+  .badge-warn { background: var(--amber-bg); color: var(--amber); }
+  .badge-zero { background: var(--bg); color: var(--text-muted); }
+  .badge-info { background: var(--blue-bg); color: var(--blue); }
+
+  /* INFO BOXES */
+  .info-box {
+    background: var(--blue-bg);
+    border: 1px solid #bfdbfe;
+    border-radius: var(--radius-sm);
+    padding: 10px 14px;
+    font-size: 12px;
+    color: var(--blue);
+    line-height: 1.6;
+    margin-bottom: 1rem;
+  }
+
+  /* ORDEN HEADER */
+  .local-header {
+    display: flex; align-items: center;
+    justify-content: space-between;
+    margin-bottom: 10px;
+  }
+  .local-name {
+    font-size: 15px; font-weight: 600;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .local-pin {
+    width: 24px; height: 24px;
+    background: var(--green-bg);
+    border-radius: 6px;
+    display: flex; align-items: center; justify-content: center;
+    color: var(--accent);
+    font-size: 13px;
+  }
+
+  /* EXPORT BAR */
+  .export-bar {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1rem 1.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 1rem;
+  }
+  .export-bar-text { font-size: 13px; font-weight: 500; }
+  .export-bar-sub { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+
+  /* RESUMEN TABLE */
+  .resumen-card {
+    background: var(--text);
+    color: white;
+    border-radius: var(--radius);
+    padding: 1.25rem 1.5rem;
+    margin-bottom: 1rem;
+  }
+  .resumen-card .card-title { color: rgba(255,255,255,0.5); }
+  .resumen-card table { color: white; }
+  .resumen-card th { color: rgba(255,255,255,0.4); border-color: rgba(255,255,255,0.1); }
+  .resumen-card td { border-color: rgba(255,255,255,0.08); }
+  .resumen-card tr:hover td { background: rgba(255,255,255,0.04); }
+
+  /* FILTRO LOCAL */
+  .filtro-bar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 10px 14px;
+    margin-bottom: 1rem;
+    flex-wrap: wrap;
+  }
+  .filtro-label {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    white-space: nowrap;
+  }
+  .filtro-search {
+    flex: 1;
+    min-width: 160px;
+    padding: 6px 10px;
+    font-size: 13px;
+    font-family: 'DM Sans', sans-serif;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    background: var(--bg);
+    color: var(--text);
+  }
+  .filtro-search:focus {
+    outline: none;
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(45,106,79,0.1);
+  }
+  .filtro-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+    flex: 99;
+  }
+  .filtro-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 4px 12px;
+    border-radius: 100px;
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    border: 1px solid var(--border);
+    background: var(--bg);
+    color: var(--text-muted);
+    transition: all 0.15s;
+    user-select: none;
+  }
+  .filtro-chip:hover {
+    border-color: var(--accent);
+    color: var(--text);
+  }
+  .filtro-chip.activo {
+    background: var(--green-bg);
+    border-color: var(--accent);
+    color: var(--green);
+    font-weight: 600;
+  }
+  .filtro-chip.todos {
+    background: var(--text);
+    border-color: var(--text);
+    color: white;
+  }
+  .filtro-chip.todos:hover {
+    background: #333;
+  }
+
+  /* EMPTY STATE */
+  .empty {
+    text-align: center; padding: 3rem 1rem;
+    color: var(--text-muted);
+  }
+  .empty-icon { font-size: 40px; margin-bottom: 12px; }
+  .empty-title { font-size: 15px; font-weight: 500; margin-bottom: 6px; color: var(--text); }
+  .empty-sub { font-size: 13px; }
+
+  /* FOOTER */
+  .footer {
+    text-align: center;
+    padding: 2rem;
+    font-size: 11px;
+    color: var(--text-muted);
+    border-top: 1px solid var(--border);
+    margin-top: 2rem;
+  }
+
+  @media print {
+    .header, .tabs-bar, .upload-zone, .btn, .stock-input, .export-bar { display: none !important; }
+    .card { break-inside: avoid; border: 1px solid #ddd; }
+    body { background: white; }
+  }
+  /* DIRECTORIO */
+  .dir-toolbar {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    flex-wrap: wrap;
+    margin-bottom: 1rem;
+  }
+  .dir-search-wrap {
+    position: relative;
+    flex: 1;
+    min-width: 200px;
+  }
+  .dir-search-wrap svg {
+    position: absolute;
+    left: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--text-muted);
+    pointer-events: none;
+  }
+  .dir-search {
+    width: 100%;
+    padding: 8px 10px 8px 34px;
+    font-size: 13px;
+    font-family: 'DM Sans', sans-serif;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    background: var(--surface);
+    color: var(--text);
+  }
+  .dir-search:focus {
+    outline: none;
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(45,106,79,0.1);
+  }
+  .dir-select {
+    padding: 8px 10px;
+    font-size: 13px;
+    font-family: 'DM Sans', sans-serif;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    background: var(--surface);
+    color: var(--text);
+    cursor: pointer;
+  }
+  .dir-select:focus { outline: none; border-color: var(--accent); }
+  .dir-count {
+    font-size: 12px;
+    color: var(--text-muted);
+    white-space: nowrap;
+    padding: 0 4px;
+  }
+  .dir-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 10px;
+  }
+  .dir-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 12px 14px;
+    transition: border-color 0.15s, box-shadow 0.15s;
+  }
+  .dir-card:hover {
+    border-color: var(--accent);
+    box-shadow: 0 2px 8px rgba(45,106,79,0.08);
+  }
+  .dir-card-nombre {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text);
+    margin-bottom: 4px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .dir-card-dir {
+    font-size: 12px;
+    color: var(--text-muted);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    margin-bottom: 6px;
+  }
+  .dir-card-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .dir-badge-dpto {
+    display: inline-block;
+    background: var(--blue-bg);
+    color: var(--blue);
+    border-radius: 100px;
+    padding: 2px 8px;
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+  }
+  .dir-codigo {
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    color: var(--text-muted);
+  }
+  .dir-empty {
+    text-align: center;
+    padding: 3rem;
+    color: var(--text-muted);
+    font-size: 13px;
+    grid-column: 1/-1;
+  }
+  .dir-card { cursor: pointer; }
+  .dir-has-hist { border-color: var(--green); }
+  .dir-hist-badge {
+    display: inline-flex; align-items: center; gap: 4px;
+    background: var(--green-bg); color: var(--green);
+    border-radius: 100px; padding: 2px 8px;
+    font-size: 10px; font-weight: 700;
+  }
+
+  /* MODAL HISTORIAL */
+  .modal-overlay {
+    display: none;
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.45);
+    z-index: 500;
+    align-items: center; justify-content: center;
+    padding: 1rem;
+  }
+  .modal-overlay.open { display: flex; }
+  .modal-box {
+    background: var(--surface);
+    border-radius: var(--radius);
+    width: 100%; max-width: 760px;
+    max-height: 90vh;
+    display: flex; flex-direction: column;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+  }
+  .modal-header {
+    padding: 1.1rem 1.5rem;
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: flex-start; justify-content: space-between;
+    gap: 10px;
+  }
+  .modal-title { font-size: 15px; font-weight: 600; }
+  .modal-sub { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+  .modal-close {
+    background: none; border: none; cursor: pointer;
+    color: var(--text-muted); font-size: 20px; line-height: 1;
+    padding: 0; flex-shrink: 0;
+  }
+  .modal-close:hover { color: var(--text); }
+  .modal-body { overflow-y: auto; padding: 1.25rem 1.5rem; flex: 1; }
+  .hist-entry {
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    margin-bottom: 10px;
+    overflow: hidden;
+  }
+  .hist-entry-hdr {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 8px 12px;
+    background: var(--bg);
+    cursor: pointer;
+    user-select: none;
+  }
+  .hist-entry-hdr:hover { background: var(--green-bg); }
+  .hist-fecha { font-size: 12px; font-weight: 600; }
+  .hist-meta { font-size: 11px; color: var(--text-muted); margin-top: 1px; }
+  .hist-badges { display: flex; gap: 6px; align-items: center; }
+  .hist-body { display: none; padding: 0 12px 10px; }
+  .hist-body.open { display: block; }
+  .hist-table { width: 100%; border-collapse: collapse; font-size: 12px; margin-top: 8px; }
+  .hist-table th {
+    text-align: left; padding: 5px 8px;
+    font-size: 10px; font-weight: 600;
+    text-transform: uppercase; letter-spacing: 0.4px;
+    color: var(--text-muted); border-bottom: 1px solid var(--border);
+  }
+  .hist-table td { padding: 6px 8px; border-bottom: 1px solid var(--border); }
+  .hist-table tr:last-child td { border-bottom: none; }
+  .hist-empty {
+    text-align: center; padding: 2.5rem 1rem;
+    color: var(--text-muted); font-size: 13px;
+  }
+  .hist-empty-icon { font-size: 32px; margin-bottom: 8px; }
+  /* STOCK SEG POR PRODUCTO */
+  .seg-prod-wrap {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+  }
+  .seg-prod-toggle {
+    position: relative;
+    display: inline-block;
+    width: 28px; height: 17px;
+    flex-shrink: 0;
+    cursor: pointer;
+  }
+  .seg-prod-toggle input { opacity:0; width:0; height:0; }
+  .seg-prod-slider {
+    position: absolute; cursor: pointer; inset: 0;
+    background: var(--border-strong); border-radius: 17px;
+    transition: background .2s;
+  }
+  .seg-prod-slider:before {
+    content: ''; position: absolute;
+    width: 11px; height: 11px; left: 3px; bottom: 3px;
+    background: white; border-radius: 50%;
+    transition: transform .2s;
+    box-shadow: 0 1px 3px rgba(0,0,0,.2);
+  }
+  .seg-prod-toggle input:checked + .seg-prod-slider { background: var(--accent); }
+  .seg-prod-toggle input:checked + .seg-prod-slider:before { transform: translateX(11px); }
+
+  .seg-prod-qty {
+    width: 38px;
+    padding: 3px 5px;
+    font-size: 12px;
+    font-family: 'DM Mono', monospace;
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    background: var(--surface);
+    color: var(--text);
+    text-align: center;
+    display: none; /* visible solo cuando toggle activo */
+    transition: border-color .15s;
+  }
+  .seg-prod-qty:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 2px rgba(45,106,79,.1); }
+  .seg-prod-qty.visible { display: block; }
+  .seg-prod-label {
+    font-size: 10px;
+    color: var(--text-muted);
+    white-space: nowrap;
+    display: none;
+  }
+  .seg-prod-label.visible { display: inline; }
+
+  /* TOGGLE ACTIVO */
+  .toggle-wrap { display:flex; justify-content:center; align-items:center; }
+  .toggle { position:relative; display:inline-block; width:34px; height:20px; }
+  .toggle input { opacity:0; width:0; height:0; }
+  .toggle-slider {
+    position:absolute; cursor:pointer; inset:0;
+    background:var(--border); border-radius:20px;
+    transition:.2s;
+  }
+  .toggle-slider:before {
+    content:''; position:absolute;
+    width:14px; height:14px; left:3px; bottom:3px;
+    background:white; border-radius:50%; transition:.2s;
+  }
+  .toggle input:checked + .toggle-slider { background:var(--accent); }
+  .toggle input:checked + .toggle-slider:before { transform:translateX(14px); }
+  tr.inactivo td { opacity:.35; }
+  tr.inactivo .toggle-wrap { opacity:1; }
+
+  .fr-stats { display: grid; grid-template-columns: repeat(4,1fr); gap: 10px; margin-bottom: 1rem; }
+
+  /* AGRUPADO POR LOCAL EN TABLA */
+  .local-group-hdr td {
+    background: var(--bg) !important;
+    border-top: 2px solid var(--green) !important;
+    border-bottom: 1px solid var(--border) !important;
+    padding: 10px 12px !important;
+  }
+  .local-group-hdr:hover td { background: var(--green-bg) !important; }
+  /* SEMÁFORO DE STOCK */
+  .semaforo { display:inline-flex; align-items:center; gap:5px; font-size:11px; font-weight:600; padding:2px 8px; border-radius:100px; }
+  .sem-ok   { background:var(--green-bg); color:var(--green); }
+  .sem-warn { background:var(--amber-bg); color:var(--amber); }
+  .sem-bad  { background:var(--red-bg);   color:var(--red); }
+  .sem-none { background:var(--border);   color:var(--text-muted); }
+
+  /* STOCK DE SEGURIDAD TOGGLE */
+  .seg-panel {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    background: var(--surface);
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius);
+    padding: 12px 18px;
+    margin-bottom: 1rem;
+    transition: border-color 0.2s, background 0.2s;
+    flex-wrap: wrap;
+  }
+  .seg-panel.activo {
+    border-color: var(--accent);
+    background: var(--green-bg);
+  }
+  .seg-icon {
+    width: 34px; height: 34px;
+    border-radius: 8px;
+    background: var(--bg);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 17px;
+    flex-shrink: 0;
+    transition: background 0.2s;
+  }
+  .seg-panel.activo .seg-icon { background: var(--green-light); }
+  .seg-info { flex: 1; min-width: 0; }
+  .seg-title {
+    font-size: 13px; font-weight: 600;
+    color: var(--text);
+    display: flex; align-items: center; gap: 7px;
+  }
+  .seg-badge {
+    font-size: 10px; font-weight: 700;
+    padding: 2px 8px; border-radius: 100px;
+    background: var(--border); color: var(--text-muted);
+    transition: all 0.2s;
+    text-transform: uppercase; letter-spacing: 0.4px;
+  }
+  .seg-panel.activo .seg-badge {
+    background: var(--green-light); color: var(--green);
+  }
+  .seg-sub { font-size: 11px; color: var(--text-muted); margin-top: 3px; }
+  .seg-panel.activo .seg-sub { color: var(--green); opacity: 0.8; }
+
+  /* TOGGLE grande para seg */
+  .toggle-seg { position:relative; display:inline-block; width:44px; height:26px; flex-shrink:0; cursor:pointer; }
+  .toggle-seg input { opacity:0; width:0; height:0; }
+  .toggle-seg-slider {
+    position:absolute; cursor:pointer; inset:0;
+    background: var(--border-strong); border-radius:26px;
+    transition: background 0.2s;
+    box-shadow: inset 0 1px 3px rgba(0,0,0,.1);
+  }
+  .toggle-seg-slider:before {
+    content:''; position:absolute;
+    width:20px; height:20px; left:3px; bottom:3px;
+    background:white; border-radius:50%;
+    transition: transform 0.2s;
+    box-shadow: 0 1px 4px rgba(0,0,0,.2);
+  }
+  .toggle-seg input:checked + .toggle-seg-slider { background: var(--accent); }
+  .toggle-seg input:checked + .toggle-seg-slider:before { transform: translateX(18px); }
+
+  /* ALERTAS DE QUIEBRE */
+  .alertas-box {
+    background: var(--red-bg); border: 1px solid #fca5a5;
+    border-radius: var(--radius); padding: 1rem 1.25rem;
+    margin-bottom: 1rem; display: none;
+  }
+  .alertas-box.visible { display: block; }
+  .alertas-title { font-weight:700; color:var(--red); font-size:13px; margin-bottom:8px; display:flex; align-items:center; gap:6px; }
+  .alerta-item { font-size:12px; padding:4px 0; border-bottom:1px solid #fecaca; color:#7f1d1d; }
+  .alerta-item:last-child { border-bottom:none; }
+
+  /* MODAL PDF */
+  .pdf-modal-overlay {
+    display:none; position:fixed; inset:0;
+    background:rgba(0,0,0,.45); z-index:600;
+    align-items:center; justify-content:center; padding:1rem;
+  }
+  .pdf-modal-overlay.open { display:flex; }
+  .pdf-modal-box {
+    background:var(--surface); border-radius:var(--radius);
+    width:100%; max-width:480px; padding:1.5rem;
+    box-shadow:0 20px 60px rgba(0,0,0,.2);
+  }
+  .pdf-modal-title { font-size:15px; font-weight:700; margin-bottom:1rem; }
+  .pdf-local-list { max-height:300px; overflow-y:auto; margin-bottom:1rem; }
+  .pdf-local-item {
+    display:flex; align-items:center; gap:8px;
+    padding:6px 8px; border-radius:var(--radius-sm);
+    font-size:13px; cursor:pointer;
+  }
+  .pdf-local-item:hover { background:var(--green-bg); }
+  .pdf-local-item input { accent-color:var(--accent); width:15px; height:15px; }
+
+  /* COLORES POR LOCAL EN ORDEN */
+  .local-card-0 { border-left: 4px solid #2d6a4f; }
+  .local-card-1 { border-left: 4px solid #1e40af; }
+  .local-card-2 { border-left: 4px solid #92400e; }
+  .local-card-3 { border-left: 4px solid #6b21a8; }
+  .local-card-4 { border-left: 4px solid #0e7490; }
+  .local-card-5 { border-left: 4px solid #be185d; }
+  .local-card-6 { border-left: 4px solid #166534; }
+  .local-card-7 { border-left: 4px solid #9a3412; }
+  .local-card-8 { border-left: 4px solid #1d4ed8; }
+  .local-card-9 { border-left: 4px solid #4d7c0f; }
+
+  .local-card-0 .local-name { color: #2d6a4f; }
+  .local-card-1 .local-name { color: #1e40af; }
+  .local-card-2 .local-name { color: #92400e; }
+  .local-card-3 .local-name { color: #6b21a8; }
+  .local-card-4 .local-name { color: #0e7490; }
+  .local-card-5 .local-name { color: #be185d; }
+  .local-card-6 .local-name { color: #166534; }
+  .local-card-7 .local-name { color: #9a3412; }
+  .local-card-8 .local-name { color: #1d4ed8; }
+  .local-card-9 .local-name { color: #4d7c0f; }
+
+  .local-card-0 .local-pin { background: #edf7f1; color: #2d6a4f; }
+  .local-card-1 .local-pin { background: #eff6ff; color: #1e40af; }
+  .local-card-2 .local-pin { background: #fef3c7; color: #92400e; }
+  .local-card-3 .local-pin { background: #f5f3ff; color: #6b21a8; }
+  .local-card-4 .local-pin { background: #ecfeff; color: #0e7490; }
+  .local-card-5 .local-pin { background: #fdf2f8; color: #be185d; }
+  .local-card-6 .local-pin { background: #f0fdf4; color: #166534; }
+  .local-card-7 .local-pin { background: #fff7ed; color: #9a3412; }
+  .local-card-8 .local-pin { background: #eff6ff; color: #1d4ed8; }
+  .local-card-9 .local-pin { background: #f7fee7; color: #4d7c0f; }
+
+
+  .dash-grid { display:grid; grid-template-columns:1fr 1fr; gap:1rem; margin-bottom:1rem; }
+  .dash-grid-3 { display:grid; grid-template-columns:1fr 1fr 1fr; gap:1rem; margin-bottom:1rem; }
+  @media(max-width:900px) { .dash-grid,.dash-grid-3 { grid-template-columns:1fr; } }
+  .dash-card { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:1.1rem; }
+  .dash-card-title { font-size:12px; font-weight:600; color:var(--text-muted); text-transform:uppercase; letter-spacing:.4px; margin-bottom:1rem; }
+  .dash-empty { text-align:center; padding:3rem; color:var(--text-muted); font-size:13px; }
+  .ranking-item { display:flex; align-items:center; gap:8px; padding:6px 0; border-bottom:1px solid var(--border); font-size:12px; }
+  .ranking-item:last-child { border-bottom:none; }
+  .ranking-pos { font-weight:700; font-family:'DM Mono',monospace; color:var(--text-muted); width:20px; flex-shrink:0; }
+  .ranking-nombre { flex:1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .ranking-val { font-family:'DM Mono',monospace; font-weight:700; color:var(--green); }
+  .ranking-bar-wrap { width:60px; height:6px; background:var(--border); border-radius:3px; flex-shrink:0; }
+  .ranking-bar { height:6px; background:var(--accent); border-radius:3px; }
+
+  /* SPLASH SCREEN */
+  @keyframes splashFadeIn {
+    from { opacity: 0; transform: scale(0.85); }
+    to   { opacity: 1; transform: scale(1); }
+  }
+  @keyframes splashFadeOut {
+    from { opacity: 1; }
+    to   { opacity: 0; pointer-events: none; }
+  }
+  @keyframes splashLogoFloat {
+    0%,100% { transform: translateY(0px); }
+    50%      { transform: translateY(-8px); }
+  }
+  @keyframes splashDot {
+    0%,80%,100% { opacity: 0.2; transform: scale(0.7); }
+    40%          { opacity: 1;   transform: scale(1); }
+  }
+  #splash {
+    position: fixed; inset: 0; z-index: 9999;
+    background: #f5f4f0;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    gap: 20px;
+    animation: splashFadeOut 0.5s ease 2.2s forwards;
+    pointer-events: all;
+  }
+  #splash-logo {
+    width: 180px;
+    animation: splashFadeIn 0.6s cubic-bezier(.22,1,.36,1) 0.2s both,
+               splashLogoFloat 2.5s ease-in-out 0.8s infinite;
+  }
+  #splash-tagline {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text-muted);
+    letter-spacing: 0.3px;
+    animation: splashFadeIn 0.5s ease 0.7s both;
+  }
+  #splash-dots {
+    display: flex; gap: 7px;
+    animation: splashFadeIn 0.4s ease 1s both;
+  }
+  #splash-dots span {
+    width: 7px; height: 7px;
+    background: var(--accent);
+    border-radius: 50%;
+    animation: splashDot 1.2s ease-in-out infinite;
+  }
+  #splash-dots span:nth-child(2) { animation-delay: 0.2s; }
+  #splash-dots span:nth-child(3) { animation-delay: 0.4s; }
+
+  /* HEADER LOGO IMG */
+  .header-logo-img {
+    height: 30px;
+    width: auto;
+    display: block;
+    transition: transform 0.2s ease;
+  }
+  .header-logo-img:hover { transform: scale(1.05); }
+  .header-logo {
+    gap: 12px;
+  }
+</style>
+</head>
+<body>
+
+<!-- SPLASH SCREEN -->
+<div id="splash">
+  <img id="splash-logo" src="prodhinlogo.jpg" alt="Prodhin - La Marca del Huevo">
+  <div id="splash-tagline">Cargando sistema de órdenes…</div>
+  <div id="splash-dots">
+    <span></span><span></span><span></span>
+  </div>
+</div>
+
+<header class="header">
+  <div class="header-logo">
+    <img src="prodhinlogo.jpg" alt="Prodhin" class="header-logo-img">
+    <span style="color:var(--border-strong);font-weight:300;">|</span>
+    Orden Sugerida · Polakof
+  </div>
+  <span class="header-badge">Maruby S.A.</span>
+</header>
+
+<div class="tabs-bar">
+  <button class="tab-btn active" onclick="showTab('archivos')" id="tab-btn-archivos">
+    <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+    Subir locales
+    <span class="tab-count" id="count-locales">0</span>
+  </button>
+  <button class="tab-btn" onclick="showTab('orden')" id="tab-btn-orden">
+    <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+    Orden sugerida
+  </button>
+  <button class="tab-btn" onclick="showTab('directorio')" id="tab-btn-directorio">
+    <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+    Locales Polakof
+    <span class="tab-count" style="background:var(--blue-bg);color:var(--blue)">76</span>
+  </button>
+  <button class="tab-btn" onclick="showTab('dashboard'); initDashboard()" id="tab-btn-dashboard">
+    <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+    Dashboard
+  </button>
+</div>
+
+<div class="main">
+
+  <!-- TAB ARCHIVOS -->
+  <div class="section active" id="tab-archivos">
+
+    <div class="card">
+      <div class="card-title">
+        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+        Archivos Scantech
+      </div>
+      <div class="info-box">
+        Subí un archivo <strong>.xlsx</strong> por local, tal como lo bajás de Scantech. El sistema lee la columna <strong>Vendas medida</strong> automáticamente.<br>
+        El nombre del archivo se usa como nombre del local (ej: <code>Pocitos.xlsx</code> → local "Pocitos").
+      </div>
+
+      <div class="upload-zone" id="drop-zone"
+        onclick="document.getElementById('fi').click()"
+        ondragover="onDragOver(event)"
+        ondragleave="onDragLeave(event)"
+        ondrop="onDrop(event)">
+        <div class="upload-icon">
+          <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="16 16 12 12 8 16"/><line x1="12" y1="12" x2="12" y2="21"/><path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3"/></svg>
+        </div>
+        <div class="upload-title">Arrastrá los archivos acá o hacé clic</div>
+        <div class="upload-sub">Podés subir varios a la vez · .xlsx · .xltx · .csv</div>
+      </div>
+      <input type="file" id="fi" accept=".csv,.xlsx,.xltx,.xls" multiple style="display:none" onchange="handleFiles(event.target.files)">
+
+      <div class="divider">o probá con datos de ejemplo</div>
+      <button class="btn btn-full" onclick="cargarEjemplo()">
+        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg>
+        Cargar datos de ejemplo
+      </button>
+    </div>
+
+    <div id="panel-locales" style="display:none">
+      <div class="card">
+        <div class="card-title">
+          <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+          Locales cargados
+        </div>
+        <div class="chips" id="chips"></div>
+        <div class="metrics">
+          <div class="metric"><div class="metric-val" id="m-loc">0</div><div class="metric-lbl">Locales</div></div>
+          <div class="metric"><div class="metric-val" id="m-sku">0</div><div class="metric-lbl">SKUs</div></div>
+          <div class="metric"><div class="metric-val" id="m-tot">0</div><div class="metric-lbl">Unidades / mes</div></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">
+          <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="3" y1="15" x2="21" y2="15"/><line x1="9" y1="3" x2="9" y2="21"/><line x1="15" y1="3" x2="15" y2="21"/></svg>
+          Ventas por local — ingresá stock si lo tenés
+        </div>
+        <div class="info-box" style="margin-bottom:12px">
+          Columna <strong>Stock local</strong>: dejá vacío si no sabés. El sugerido será igual a la venta mensual + 2.<br>
+          Si ingresás el stock, el cálculo es <strong>Venta/mes − Stock + 2</strong>, redondeado al múltiplo exacto de canasto (hacia arriba).<br>
+          El número de <strong>canastos</strong> se detecta automáticamente del nombre del producto (x6, x10, x12, x15, x24, x25).
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th style="width:230px">Descripción producto</th>
+                <th style="width:80px">Marca</th>
+                <th style="width:80px;text-align:right">Venta/mes</th>
+                <th style="width:90px;text-align:center">Stock local</th>
+                <th style="width:80px;text-align:center">Estado</th>
+                <th style="width:80px;text-align:right">Sugerido</th>
+                <th style="width:90px;text-align:center">Canastos</th>
+                <th style="width:90px;text-align:center" title="Stock de seguridad por producto (canastos extra)">Seg. extra</th>
+                <th style="width:60px;text-align:center" title="Desactivar para excluir del sugerido">Activo</th>
+              </tr>
+            </thead>
+            <tbody id="tbody-ventas"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- CARGA DE STOCK -->
+      <div class="card" id="card-stock">
+        <div class="card-title">
+          <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>
+          Stock por local — cargá tu planilla
+        </div>
+        <div class="info-box" style="margin-bottom:12px">
+          Subí un <strong>.xlsx o .csv</strong> con columnas: <code>Local</code> · <code>Producto</code> · <code>Stock</code>.<br>
+          El nombre del local debe coincidir (parcialmente) con el de Scantech. Si no subís stock, el sugerido usa solo la venta + 2.
+        </div>
+
+        <div class="upload-zone" id="drop-zone-stock"
+          onclick="document.getElementById('fi-stock').click()"
+          ondragover="onDragOver2(event)"
+          ondragleave="onDragLeave2(event)"
+          ondrop="onDrop2(event)">
+          <div class="upload-icon">
+            <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="16 16 12 12 8 16"/><line x1="12" y1="12" x2="12" y2="21"/><path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3"/></svg>
+          </div>
+          <div class="upload-title">Arrastrá tu planilla de stock acá o hacé clic</div>
+          <div class="upload-sub">.xlsx · .xltx · .csv — un archivo con todos los locales</div>
+        </div>
+        <input type="file" id="fi-stock" accept=".csv,.xlsx,.xltx,.xls" style="display:none" onchange="handleStockFile(event.target.files[0])">
+
+        <div id="stock-status" style="display:none;margin-top:12px">
+          <div class="info-box" id="stock-status-txt" style="background:var(--green-bg);border-color:var(--green);color:var(--green)"></div>
+          <button class="btn btn-sm" style="margin-top:8px;color:var(--red,#ef4444);border-color:currentColor;background:transparent" onclick="limpiarStock()">
+            <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/></svg>
+            Quitar stock cargado
+          </button>
+        </div>
+      </div>
+
+      <!-- ALERTAS DE QUIEBRE -->
+      <div class="alertas-box" id="alertas-quiebre">
+        <div class="alertas-title">
+          <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+          ⚠️ Productos en riesgo de quiebre
+        </div>
+        <div id="alertas-list"></div>
+      </div>
+
+      <!-- STOCK DE SEGURIDAD -->
+      <div class="seg-panel" id="seg-panel">
+        <div class="seg-icon">🧺</div>
+        <div class="seg-info">
+          <div class="seg-title">
+            Stock de seguridad
+            <span class="seg-badge" id="seg-badge">Desactivado</span>
+          </div>
+          <div class="seg-sub" id="seg-sub">Suma 1 canasto extra al sugerido de cada producto</div>
+        </div>
+        <label class="toggle-seg" title="Activar / desactivar stock de seguridad">
+          <input type="checkbox" id="seg-toggle" onchange="toggleSeguridad(this.checked)">
+          <span class="toggle-seg-slider"></span>
+        </label>
+      </div>
+
+      <button class="btn btn-primary btn-full" onclick="calcular()" style="margin-bottom:1rem">
+        <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="4" y="2" width="16" height="20" rx="2"/><line x1="8" y1="6" x2="16" y2="6"/><line x1="16" y1="10" x2="8" y2="10"/><line x1="11" y1="14" x2="8" y2="14"/></svg>
+        Calcular orden sugerida
+      </button>
+    </div>
+
+    <div id="empty-state" style="display:none">
+      <div class="empty">
+        <div class="empty-icon">📂</div>
+        <div class="empty-title">No hay datos cargados</div>
+        <div class="empty-sub">Subí al menos un archivo de Scantech para empezar</div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- TAB ORDEN -->
+  <div class="section" id="tab-orden">
+    <div id="filtro-local-bar" style="display:none">
+      <div class="filtro-bar">
+        <span class="filtro-label">📍 Local</span>
+        <input type="text" class="filtro-search" id="filtro-search" placeholder="Buscar sucursal…" oninput="filtrarChips(this.value)">
+        <div class="filtro-chips" id="filtro-chips"></div>
+      </div>
+    </div>
+    <div id="orden-out">
+      <div class="empty">
+        <div class="empty-icon">📋</div>
+        <div class="empty-title">Todavía no calculaste la orden</div>
+        <div class="empty-sub">Cargá los archivos de Scantech y hacé clic en "Calcular orden sugerida"</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TAB DIRECTORIO -->
+  <div class="section" id="tab-directorio">
+    <div class="card">
+      <div class="card-title">
+        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+        Directorio de locales · El Dorado / Polakof
+      </div>
+      <div class="dir-toolbar">
+        <div class="dir-search-wrap">
+          <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <input type="text" class="dir-search" id="dir-search" placeholder="Buscar por nombre, dirección o código…" oninput="filtrarDirectorio()">
+        </div>
+        <select class="dir-select" id="dir-dpto" onchange="filtrarDirectorio()">
+          <option value="">Todos los departamentos</option>
+          <option>CANELONES</option>
+          <option>CERRO LARGO</option>
+          <option>COLONIA</option>
+          <option>DURAZNO</option>
+          <option>FLORIDA</option>
+          <option>LAVALLEJA</option>
+          <option>MALDONADO</option>
+          <option>MONTEVIDEO</option>
+          <option>PAYSANDU</option>
+          <option>RIO NEGRO</option>
+          <option>ROCHA</option>
+          <option>SALTO</option>
+          <option>SAN JOSE</option>
+          <option>SORIANO</option>
+          <option>TACUAREMBO</option>
+          <option>TREINTA Y TRES</option>
+        </select>
+        <span class="dir-count" id="dir-count">76 locales</span>
+      </div>
+      <div class="dir-grid" id="dir-grid"></div>
+    </div>
+  </div>
+
+</div>
+
+  <!-- TAB DASHBOARD -->
+  <div class="section" id="tab-dashboard">
+    <div id="dash-empty" class="dash-card">
+      <div class="dash-empty">
+        <div style="font-size:36px;margin-bottom:10px">📊</div>
+        <div style="font-weight:600;margin-bottom:6px">Dashboard vacío</div>
+        <div>Cargá el archivo de Scantech y calculá la orden para ver las tendencias.</div>
+      </div>
+    </div>
+    <div id="dash-content" style="display:none">
+      <!-- Stats globales -->
+      <div id="dash-stats" class="fr-stats" style="margin-bottom:1rem"></div>
+      <div class="dash-grid">
+        <!-- Top SKUs -->
+        <div class="dash-card">
+          <div class="dash-card-title">🏆 Top 10 SKUs más vendidos</div>
+          <div id="dash-ranking-sku"></div>
+        </div>
+        <!-- Top locales -->
+        <div class="dash-card">
+          <div class="dash-card-title">📍 Top 10 locales por volumen</div>
+          <div id="dash-ranking-loc"></div>
+        </div>
+      </div>
+      <div class="dash-grid">
+        <!-- Distribución por presentación -->
+        <div class="dash-card">
+          <div class="dash-card-title">📦 Ventas por presentación</div>
+          <canvas id="chart-presentacion" height="220"></canvas>
+        </div>
+        <!-- SKUs en quiebre -->
+        <div class="dash-card">
+          <div class="dash-card-title">🚨 Productos en riesgo (stock &lt; venta semanal)</div>
+          <div id="dash-quiebres"></div>
+        </div>
+      </div>
+      <!-- Distribución geográfica -->
+      <div class="dash-card" style="margin-bottom:1rem">
+        <div class="dash-card-title">🗺️ Ventas por departamento</div>
+        <canvas id="chart-dptos" height="120"></canvas>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- MODAL PDF -->
+<div class="pdf-modal-overlay" id="modal-pdf" onclick="if(event.target===this)this.classList.remove('open')">
+  <div class="pdf-modal-box">
+    <div class="pdf-modal-title">📄 Exportar PDF por local</div>
+    <div style="font-size:12px;color:var(--text-muted);margin-bottom:10px">Seleccioná los locales que querés incluir:</div>
+    <div style="display:flex;gap:8px;margin-bottom:8px">
+      <button class="btn btn-sm" onclick="pdfSelAll(true)">Todos</button>
+      <button class="btn btn-sm" onclick="pdfSelAll(false)">Ninguno</button>
+    </div>
+    <div class="pdf-local-list" id="pdf-local-list"></div>
+    <div style="display:flex;gap:8px;margin-top:4px">
+      <button class="btn btn-primary" style="flex:1" onclick="generarPDF()">Generar PDF</button>
+      <button class="btn" onclick="document.getElementById('modal-pdf').classList.remove('open')">Cancelar</button>
+    </div>
+  </div>
+</div>
+  <div class="modal-box">
+    <div class="modal-header">
+      <div>
+        <div class="modal-title" id="modal-local-nombre">—</div>
+        <div class="modal-sub" id="modal-local-dir">—</div>
+      </div>
+      <button class="modal-close" onclick="document.getElementById('modal-hist').classList.remove('open')">✕</button>
+    </div>
+    <div class="modal-body" id="modal-body"></div>
+  </div>
+</div>
+
+<footer class="footer">
+  Sistema de órdenes sugeridas · Maruby S.A. para Polakof · Uso interno
+</footer>
+
+<script>
+let data = [];
+let stockSeguridad = false; // 1 canasto extra por producto
+// Stock de seguridad individual por producto: { nombreProducto: cantidadCanastos }
+// Se mantiene en memoria mientras la sesión esté activa
+let segProducto = {};
+
+function toggleSeguridad(activo) {
+  stockSeguridad = activo;
+  const panel  = document.getElementById('seg-panel');
+  const badge  = document.getElementById('seg-badge');
+  const sub    = document.getElementById('seg-sub');
+  panel.classList.toggle('activo', activo);
+  badge.textContent = activo ? '✓ Activado' : 'Desactivado';
+  sub.textContent   = activo
+    ? '+ 1 canasto de seguridad incluido en cada sugerido'
+    : 'Suma 1 canasto extra al sugerido de cada producto';
+  mostrarToast(activo ? '🧺 Stock de seguridad activado (+1 canasto)' : '📦 Stock de seguridad desactivado');
+}
+
+// ─── LÓGICA DE CANASTOS ────────────────────────────────────────────────────
+// Detecta la presentación del producto por el nombre y devuelve
+// cuántos paquetes entran en un canasto.
+// Retorna null si no reconoce la presentación.
+const REGLAS_CANASTO = [
+  { patron: /\b(x\s*6|pk\s*6|6\s*un)\b/i,  unidPorCanasto: 24 },
+  { patron: /\b(x\s*10|pk\s*10|10\s*un)\b/i, unidPorCanasto: 12 },
+  { patron: /\b(x\s*12|pk\s*12|12\s*un)\b/i, unidPorCanasto: 12 },
+  { patron: /\b(x\s*15|pk\s*15|15\s*un)\b/i, unidPorCanasto: 8  },
+  { patron: /\b(x\s*24|pk\s*24|24\s*un)\b/i, unidPorCanasto: 3  },
+  { patron: /\b(x\s*25|pk\s*25|25\s*un)\b/i, unidPorCanasto: 4  },
+  { patron: /\b(x\s*30|pk\s*30|30\s*un)\b/i, unidPorCanasto: 4  }, // 4 paquetes por canasto plástico
+  { patron: /maple.*rojo|rojo.*maple/i,        unidPorCanasto: 24 }, // x6 maple rojo
+];
+
+function detectarCanasto(nombreProducto) {
+  const nom = (nombreProducto || '').toUpperCase();
+  // Orden de prioridad: del más específico al más general
+  // Chequear x25 antes de x5 para evitar falsos positivos
+  const reglas = [
+    { re: /\bX\s*30\b|PK\s*30\b|30\s*UN\b/i,  upc: 4  },
+    { re: /\bX\s*25\b|PK\s*25\b|25\s*UN\b/i,  upc: 4  },
+    { re: /\bX\s*24\b|PK\s*24\b|24\s*UN\b/i,  upc: 3  },
+    { re: /\bX\s*15\b|PK\s*15\b|15\s*UN\b/i,  upc: 8  },
+    { re: /\bX\s*12\b|PK\s*12\b|12\s*UN\b/i,  upc: 12 },
+    { re: /\bX\s*10\b|PK\s*10\b|10\s*UN\b/i,  upc: 12 },
+    { re: /\bX\s*6\b|PK\s*6\b|6\s*UN\b|MAPLE\s*ROJO\b/i, upc: 24 },
+  ];
+  for (const r of reglas) {
+    if (r.re.test(nom)) return r.upc;
+  }
+  return null; // presentación no reconocida
+}
+
+// Dado un sugerido "crudo", devuelve { canastos, sugAjustado }
+// sugAjustado es el múltiplo de canasto hacia arriba
+function calcCanastos(nombreProducto, sugCrudo) {
+  if (sugCrudo <= 0) return { canastos: 0, sugAjustado: 0, upc: null };
+  const upc = detectarCanasto(nombreProducto);
+  if (upc === null) return { canastos: null, sugAjustado: sugCrudo, upc: null };
+  const canastos = Math.ceil(sugCrudo / upc);
+  const sugAjustado = canastos * upc;
+  return { canastos, sugAjustado, upc };
+}
+// ──────────────────────────────────────────────────────────────────────────
+
+function showTab(id) {
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  document.getElementById('tab-btn-' + id).classList.add('active');
+  document.getElementById('tab-' + id).classList.add('active');
+}
+
+function onDragOver(e) { e.preventDefault(); document.getElementById('drop-zone').classList.add('drag-over'); }
+function onDragLeave(e) { document.getElementById('drop-zone').classList.remove('drag-over'); }
+function onDrop(e) {
+  e.preventDefault();
+  document.getElementById('drop-zone').classList.remove('drag-over');
+  handleFiles(e.dataTransfer.files);
+}
+
+function handleFiles(files) {
+  Array.from(files).forEach(f => {
+    const nom = f.name.toLowerCase();
+    if (nom.endsWith('.csv')) readCSV(f);
+    else readXLSX(f); // cubre .xlsx, .xltx, .xls
+  });
+}
+
+function localName(fname) {
+  return fname.replace(/\.[^/.]+$/, '').replace(/[_-]/g, ' ');
+}
+
+function parseSheet(rows, local) {
+  if (!rows || rows.length < 2) return [];
+  const hdr = rows[0].map(c => (c || "").toString().toLowerCase().trim());
+  let iNom = hdr.findIndex(h => h === "nome sku" || h === "nombre sku");
+  if (iNom < 0) iNom = hdr.findIndex(h => h.startsWith("nome") || h.startsWith("nombre"));
+  if (iNom < 0) iNom = 1;
+  const iVen = hdr.findIndex(h => h.includes("venda") || h.includes("venta") || h.includes("medida"));
+  const iMar = hdr.findIndex(h => h.includes("marca sku") || h === "marca");
+  if (iVen < 0) { alert("No se encontró la columna Vendas medida en el archivo."); return []; }
+  return rows.slice(1).map(r => ({
+    local,
+    producto: (r[iNom] || "").toString().trim(),
+    marca: iMar >= 0 ? (r[iMar] || "").toString().trim() : "",
+    ventas: parseFloat(r[iVen]) || 0
+  })).filter(r => r.producto && r.ventas > 0);
+}
+
+// Parser para el formato consolidado de Scantech (CSV con ; separador)
+// Columnas: Red;Código PDV;Nombre PDV;Departamento;Dirección;RUT;Canal;SKU;Nombres de medidas;Valores de medidas
+function parseScantech(texto) {
+  const lineas = texto.split('\n').filter(l => l.trim());
+  const sep = ';';
+  const hdr = lineas[0].replace(/^\uFEFF/, '').split(sep).map(c => c.trim().toLowerCase());
+
+  const iLocal   = hdr.findIndex(h => h.includes('nombre pdv') || h.includes('nome pdv'));
+  const iSku     = hdr.findIndex(h => h.includes('sku') && (h.includes('visao') || h.includes('fab') || h.includes('oportunidad') || h.includes('nombre')));
+  const iMedNom  = hdr.findIndex(h => h.includes('nombres de medidas') || h.includes('nomes de medidas'));
+  const iMedVal  = hdr.findIndex(h => h.includes('valores de medidas') || h.includes('valores'));
+  const iDpto    = hdr.findIndex(h => h.includes('departamento'));
+  const iDir     = hdr.findIndex(h => h.includes('dirección') || h.includes('direccion') || h.includes('endereço'));
+
+  if (iLocal < 0 || iSku < 0 || iMedNom < 0 || iMedVal < 0) return null; // no es formato Scantech consolidado
+
+  const mapa = {}; // { local: { sku: { ventas, marca } } }
+  const locInfo = {}; // { local: { dpto, dir } }
+
+  lineas.slice(1).forEach(linea => {
+    const cols = linea.split(sep).map(c => c.trim().replace(/^"|"$/g,''));
+    const local   = cols[iLocal] || '';
+    const sku     = cols[iSku]   || '';
+    const medNom  = (cols[iMedNom] || '').toLowerCase();
+    const medVal  = parseFloat((cols[iMedVal] || '0').replace(',','.')) || 0;
+
+    if (!local || !sku) return;
+    if (!medNom.includes('venta') && !medNom.includes('venda')) return; // solo filas de ventas
+
+    if (!mapa[local]) mapa[local] = {};
+    if (!mapa[local][sku]) mapa[local][sku] = { ventas: 0 };
+    mapa[local][sku].ventas += medVal;
+
+    if (iDpto >= 0 && !locInfo[local]) {
+      locInfo[local] = { dpto: cols[iDpto] || '', dir: iDir >= 0 ? cols[iDir] || '' : '' };
+    }
+  });
+
+  if (!Object.keys(mapa).length) return null;
+
+  // Convertir al formato interno
+  const resultado = [];
+  Object.entries(mapa).forEach(([local, skus]) => {
+    Object.entries(skus).forEach(([sku, info]) => {
+      if (info.ventas > 0) {
+        resultado.push({ local, producto: sku, marca: '', ventas: Math.round(info.ventas) });
+      }
+    });
+  });
+  return resultado;
+}
+
+function readXLSX(file) {
+  const reader = new FileReader();
+  reader.onload = ev => {
+    const wb = XLSX.read(ev.target.result, { type: 'array' });
+    const rows = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { header: 1, defval: '' });
+    merge(parseSheet(rows, localName(file.name)));
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+function readCSV(file) {
+  const reader = new FileReader();
+  reader.onload = ev => {
+    const texto = ev.target.result;
+    // Intentar primero con el formato consolidado de Scantech (separador ;)
+    const consolidado = parseScantech(texto);
+    if (consolidado) {
+      // Es un archivo consolidado con todos los locales
+      mergeConsolidado(consolidado);
+      return;
+    }
+    // Fallback: CSV simple con comas (formato por local)
+    const rows = texto.split('\n').filter(l => l.trim()).map(l => l.split(',').map(c => c.trim().replace(/"/g, '')));
+    merge(parseSheet(rows, localName(file.name)));
+  };
+  reader.readAsText(file, 'UTF-8');
+}
+
+function mergeConsolidado(nuevas) {
+  if (!nuevas.length) { alert('No se encontraron datos de ventas en el archivo.'); return; }
+  const locales = [...new Set(nuevas.map(r => r.local))];
+  // Reemplazar todos los locales presentes en el archivo
+  locales.forEach(l => { data = data.filter(r => r.local !== l); });
+  data = data.concat(nuevas);
+  render();
+  const n = locales.length;
+  // Mostrar confirmación
+  const toast = document.createElement('div');
+  toast.style.cssText = 'position:fixed;bottom:20px;right:20px;background:#2d6a4f;color:white;padding:12px 18px;border-radius:8px;font-size:13px;font-weight:600;z-index:999;box-shadow:0 4px 12px rgba(0,0,0,0.2)';
+  toast.textContent = `✅ ${n} locales cargados de un solo archivo`;
+  document.body.appendChild(toast);
+  setTimeout(() => toast.remove(), 3500);
+}
+
+function merge(nuevas) {
+  if (!nuevas.length) { alert('No se encontraron datos válidos en el archivo. Verificá que tenga las columnas Nome SKU y Vendas medida.'); return; }
+  const local = nuevas[0].local;
+  data = data.filter(r => r.local !== local).concat(nuevas);
+  render();
+}
+
+function elimLocal(local) {
+  data = data.filter(r => r.local !== local);
+  render();
+}
+
+function canastoBadge(info) {
+  if (!info || info.canastos === null) return `<span style="color:var(--text-muted);font-size:12px">—</span>`;
+  if (info.canastos === 0) return `<span style="color:var(--text-muted);font-size:12px">0</span>`;
+  return `<span style="display:inline-flex;align-items:center;gap:4px;background:var(--green-bg);color:var(--green);border-radius:100px;padding:2px 9px;font-size:11px;font-weight:700;font-family:'DM Mono',monospace">🧺 ${info.canastos}</span>`;
+}
+
+// ─── PRODUCTOS DESACTIVADOS ───────────────────────────────────────────────
+const GS_INACT_KEY = 'inactivos'; // columna en Sheets
+let productosInactivos = new Set(); // Set de nombres de producto desactivados
+
+async function cargarInactivos() {
+  try {
+    const res = await fetch(GS_URL + '?tipo=inactivos');
+    const d = await res.json();
+    if (Array.isArray(d)) {
+      productosInactivos = new Set(d.map(x => (x.producto||'').toLowerCase().trim()));
+    }
+  } catch(e) {
+    try {
+      const saved = JSON.parse(localStorage.getItem('polakof_inactivos') || '[]');
+      productosInactivos = new Set(saved.map(x => x.toLowerCase().trim()));
+    } catch {}
+  }
+}
+
+async function toggleProducto(nombre, activo) {
+  if (!activo) {
+    productosInactivos.add(nombre);
+  } else {
+    productosInactivos.delete(nombre);
+  }
+  // Guardar en localStorage como fallback inmediato
+  localStorage.setItem('polakof_inactivos', JSON.stringify([...productosInactivos]));
+  // Guardar en Sheets
+  try {
+    await fetch(GS_URL, {
+      method: 'POST',
+      body: JSON.stringify({ tipo: 'inactivos', productos: [...productosInactivos] })
+    });
+  } catch(e) { console.warn('No se pudo guardar en Sheets, queda en local:', e); }
+}
+
+function estaActivo(nombre) {
+  // Solo está inactivo si fue desactivado manualmente
+  // Comparación normalizada para evitar falsos positivos por tildes/mayúsculas
+  const n = nombre.toLowerCase().trim();
+  for (const inact of productosInactivos) {
+    if (inact.toLowerCase().trim() === n) return false;
+  }
+  return true; // por defecto siempre activo
+}
+
+// ─── STOCK DE SEGURIDAD POR PRODUCTO ─────────────────────────────────────
+function onSegProdToggle(idx, nombre, activo) {
+  const qtyEl   = document.getElementById(`segqty-${idx}`);
+  const labelEl = qtyEl ? qtyEl.nextElementSibling : null;
+  if (activo) {
+    const cant = parseInt(qtyEl?.value) || 1;
+    segProducto[nombre] = cant;
+    qtyEl?.classList.add('visible');
+    labelEl?.classList.add('visible');
+  } else {
+    delete segProducto[nombre];
+    qtyEl?.classList.remove('visible');
+    labelEl?.classList.remove('visible');
+  }
+}
+
+function onSegProdQty(idx, nombre, val) {
+  const cant = Math.max(1, parseInt(val) || 1);
+  if (segProducto[nombre] !== undefined) {
+    segProducto[nombre] = cant;
+  }
+}
+// ──────────────────────────────────────────────────────────────────────────
+// ──────────────────────────────────────────────────────────────────────────
+
+function render() {
+  const locales = [...new Set(data.map(r => r.local))];
+  document.getElementById('m-loc').textContent = locales.length;
+  document.getElementById('m-sku').textContent = [...new Set(data.map(r => r.producto))].length;
+  document.getElementById('m-tot').textContent = data.reduce((a, r) => a + r.ventas, 0);
+  document.getElementById('count-locales').textContent = locales.length;
+
+  document.getElementById('chips').innerHTML = locales.map(l =>
+    `<span class="chip">
+      <svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+      ${l}
+      <button class="chip-del" onclick="elimLocal('${l.replace(/'/g,"\\'")}')">✕</button>
+    </span>`
+  ).join('');
+
+  const tbody = document.getElementById('tbody-ventas');
+  tbody.innerHTML = '';
+
+  // Agrupar por local
+  locales.forEach((local, li) => {
+    const filas = data.map((r, idx) => ({...r, idx})).filter(r => r.local === local);
+    const totVentas = filas.reduce((a, r) => a + r.ventas, 0);
+    const blockId = `local-block-${li}`;
+
+    // Fila cabecera del local
+    const trHdr = document.createElement('tr');
+    trHdr.className = 'local-group-hdr';
+    trHdr.style.cssText = 'cursor:pointer;user-select:none;';
+    trHdr.innerHTML = `
+      <td colspan="9" onclick="toggleLocalBlock('${blockId}', this)">
+        <div style="display:flex;align-items:center;gap:10px">
+          <span id="${blockId}-arrow" style="font-size:16px;color:var(--green);transition:.2s">▼</span>
+          <div class="local-pin" style="width:22px;height:22px;background:var(--green-bg);border-radius:50%;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0">
+            <svg width="11" height="11" fill="none" stroke="var(--green)" stroke-width="2" viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+          </div>
+          <span style="font-weight:700;font-size:13px">${local}</span>
+          <span class="badge badge-info" style="margin-left:4px">${filas.length} SKUs</span>
+          <span style="margin-left:auto;font-size:12px;color:var(--text-muted);font-family:'DM Mono',monospace">${totVentas} un/mes</span>
+        </div>
+      </td>`;
+    tbody.appendChild(trHdr);
+
+    // Filas de productos del local
+    filas.forEach(r => {
+      const idx = r.idx;
+      const sugInicial = r.ventas + 2;
+      const infoInicial = calcCanastos(r.producto, sugInicial);
+      const activo = estaActivo(r.producto);
+      const vtaSemanal = r.ventas / 4;
+
+      // Semáforo (se calcula al renderizar, se actualiza al cargar stock)
+      const semHtml = `<span class="semaforo sem-none" id="sem-${idx}">—</span>`;
+
+      const segActivo = !!(segProducto[r.producto] !== undefined);
+      const segCant   = segProducto[r.producto] || 1;
+
+      const tr = document.createElement('tr');
+      tr.dataset.block = blockId;
+      if (!activo) tr.classList.add('inactivo');
+      tr.innerHTML = `
+        <td title="${r.producto}" style="padding-left:2rem">${r.producto}</td>
+        <td>${r.marca}</td>
+        <td style="text-align:right;font-family:'DM Mono',monospace">${r.ventas}</td>
+        <td style="text-align:center">
+          <input type="number" class="stock-input" id="st-${idx}" placeholder="—" min="0" ${!activo?'disabled':''}>
+        </td>
+        <td style="text-align:center">${semHtml}</td>
+        <td style="text-align:right;font-weight:600;font-family:'DM Mono',monospace" id="sug-${idx}">${activo ? infoInicial.sugAjustado : 0}</td>
+        <td style="text-align:center" id="can-${idx}">${activo ? canastoBadge(infoInicial) : '—'}</td>
+        <td style="text-align:center">
+          <div class="seg-prod-wrap">
+            <label class="seg-prod-toggle" title="Stock de seguridad para este producto">
+              <input type="checkbox" id="segchk-${idx}" ${segActivo?'checked':''}
+                onchange="onSegProdToggle(${idx}, '${r.producto.replace(/'/g,"\\'")}', this.checked)">
+              <span class="seg-prod-slider"></span>
+            </label>
+            <input type="number" class="seg-prod-qty ${segActivo?'visible':''}" id="segqty-${idx}"
+              value="${segCant}" min="1" max="99" title="Canastos de seguridad extra"
+              oninput="onSegProdQty(${idx}, '${r.producto.replace(/'/g,"\\'")}', this.value)">
+            <span class="seg-prod-label ${segActivo?'visible':''}">can</span>
+          </div>
+        </td>
+        <td class="toggle-wrap">
+          <label class="toggle" title="${activo?'Desactivar':'Activar'}">
+            <input type="checkbox" ${activo?'checked':''} onchange="toggleProducto('${r.producto.replace(/'/g,"\\'")}', this.checked); this.closest('tr').classList.toggle('inactivo',!this.checked); document.getElementById('sug-${idx}').textContent=this.checked?document.getElementById('sug-${idx}').dataset.val||'':0; this.closest('td').previousElementSibling.previousElementSibling.previousElementSibling.previousElementSibling.querySelector('input').disabled=!this.checked;">
+            <span class="toggle-slider"></span>
+          </label>
+        </td>
+      `;
+      tr.querySelector(`#st-${idx}`).addEventListener('input', function () {
+        const st = parseFloat(this.value);
+        const sugCrudo = isNaN(st) ? (r.ventas + 2) : Math.max(0, r.ventas - st + 2);
+        const info = calcCanastos(r.producto, sugCrudo);
+        const sugEl = document.getElementById(`sug-${idx}`);
+        sugEl.textContent = info.sugAjustado;
+        tr.classList.toggle('zero', info.sugAjustado === 0);
+        sugEl.style.color = info.sugAjustado === 0 ? 'var(--text-muted)' : info.sugAjustado < r.ventas ? 'var(--green)' : 'var(--text)';
+        document.getElementById(`can-${idx}`).innerHTML = canastoBadge(info);
+        // Actualizar semáforo
+        actualizarSemaforo(idx, isNaN(st) ? null : st, vtaSemanal);
+      });
+      tbody.appendChild(tr);
+    });
+
+    // Separador entre locales
+    const trSep = document.createElement('tr');
+    trSep.innerHTML = `<td colspan="9" style="padding:4px 0;border:none;background:transparent"></td>`;
+    tbody.appendChild(trSep);
+  });
+
+  document.getElementById('panel-locales').style.display = data.length ? 'block' : 'none';
+  if (Object.keys(stockData).length) aplicarStockAlTabla();
+}
+
+function toggleLocalBlock(blockId, el) {
+  const rows = document.querySelectorAll(`tr[data-block="${blockId}"]`);
+  const arrow = document.getElementById(`${blockId}-arrow`);
+  const visible = rows[0] && rows[0].style.display !== 'none';
+  rows.forEach(r => r.style.display = visible ? 'none' : '');
+  if (arrow) arrow.textContent = visible ? '▶' : '▼';
+}
+
+let localSeleccionado = 'TODOS';
+
+function renderFiltroChips(locales) {
+  const bar = document.getElementById('filtro-local-bar');
+  const cont = document.getElementById('filtro-chips');
+  if (!locales || locales.length === 0) { bar.style.display = 'none'; return; }
+  bar.style.display = 'block';
+  localSeleccionado = 'TODOS';
+  document.getElementById('filtro-search').value = '';
+  _renderChipsVisible(locales, locales);
+}
+
+// Paleta de colores por local (borde + texto)
+const PALETA_LOCALES = [
+  { border:'#2d6a4f', bg:'#edf7f1', text:'#2d6a4f' },
+  { border:'#1e40af', bg:'#eff6ff', text:'#1e40af' },
+  { border:'#92400e', bg:'#fef3c7', text:'#92400e' },
+  { border:'#6b21a8', bg:'#f5f3ff', text:'#6b21a8' },
+  { border:'#0e7490', bg:'#ecfeff', text:'#0e7490' },
+  { border:'#be185d', bg:'#fdf2f8', text:'#be185d' },
+  { border:'#166534', bg:'#f0fdf4', text:'#166534' },
+  { border:'#9a3412', bg:'#fff7ed', text:'#9a3412' },
+  { border:'#1d4ed8', bg:'#eff6ff', text:'#1d4ed8' },
+  { border:'#4d7c0f', bg:'#f7fee7', text:'#4d7c0f' },
+];
+
+function _renderChipsVisible(localesVisible, localesAll) {
+  const cont = document.getElementById('filtro-chips');
+  let html = `<span class="filtro-chip todos ${localSeleccionado==='TODOS'?'activo':''}" onclick="seleccionarLocal('TODOS', ${JSON.stringify(localesAll)})">Todos (${localesAll.length})</span>`;
+  localesVisible.forEach(l => {
+    const idxAll = localesAll.indexOf(l);
+    const pal = PALETA_LOCALES[idxAll % PALETA_LOCALES.length];
+    const esActivo = localSeleccionado === l;
+    const style = esActivo
+      ? `background:${pal.bg};border-color:${pal.border};color:${pal.text};font-weight:700`
+      : `border-left:3px solid ${pal.border}`;
+    html += `<span class="filtro-chip ${esActivo?'activo':''}" style="${style}" onclick="seleccionarLocal(${JSON.stringify(l)}, ${JSON.stringify(localesAll)})">${l}</span>`;
+  });
+  cont.innerHTML = html;
+}
+
+function filtrarChips(q) {
+  if (!window._ordenLocales) return;
+  const locales = window._ordenLocales;
+  const filtrados = q.trim() === '' ? locales : locales.filter(l => l.toLowerCase().includes(q.toLowerCase()));
+  _renderChipsVisible(filtrados, locales);
+}
+
+function seleccionarLocal(local, localesAll) {
+  localSeleccionado = local;
+  document.getElementById('filtro-search').value = '';
+  _renderChipsVisible(localesAll, localesAll);
+  aplicarFiltroVista();
+}
+
+function aplicarFiltroVista() {
+  if (!window._ordenFilas) return;
+  const filas = window._ordenFilas;
+  const locales = localSeleccionado === 'TODOS'
+    ? window._ordenLocales
+    : window._ordenLocales.filter(l => l === localSeleccionado);
+  renderOrden(filas, locales, window._skusTot, window._skusMarca, window._skusCan, window._skusUpc);
+}
+
+function renderOrden(filas, locales, skusTot, skusMarca, skusCan, skusUpc) {
+  const filasVista = localSeleccionado === 'TODOS' ? filas : filas.filter(r => r.local === localSeleccionado);
+  const totalSug = filasVista.reduce((a, r) => a + r.sug, 0);
+  const totalCan = filasVista.reduce((a, r) => a + (r.canastos || 0), 0);
+  const locConEnvio = [...new Set(filasVista.filter(r => r.sug > 0).map(r => r.local))].length;
+
+  let html = '';
+  html += `<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:1.25rem">
+    <div class="metric"><div class="metric-val">${totalSug}</div><div class="metric-lbl">Unidades a enviar</div></div>
+    <div class="metric"><div class="metric-val">🧺 ${totalCan}</div><div class="metric-lbl">Canastos totales</div></div>
+    <div class="metric"><div class="metric-val">${locConEnvio}</div><div class="metric-lbl">Locales con envío</div></div>
+    <div class="metric"><div class="metric-val">${locales.length}</div><div class="metric-lbl">Locales totales</div></div>
+  </div>`;
+
+  html += `<div class="export-bar">
+    <div>
+      <div class="export-bar-text">Orden calculada${localSeleccionado !== 'TODOS' ? ' · ' + localSeleccionado : ''}${stockSeguridad ? ' <span style="font-size:11px;background:var(--green-bg);color:var(--green);border:1px solid var(--green-light);padding:2px 8px;border-radius:100px;font-weight:600;vertical-align:middle">🧺 +1 canasto seg.</span>' : ''}</div>
+      <div class="export-bar-sub">${new Date().toLocaleDateString('es-UY', {weekday:'long',year:'numeric',month:'long',day:'numeric'})}</div>
+    </div>
+    <div style="display:flex;gap:8px">
+      <button class="btn btn-sm" onclick="exportarExcel()">
+        <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        Exportar Excel
+      </button>
+      <button class="btn btn-sm" onclick="abrirModalPDF()">
+        <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+        PDF por local
+      </button>
+      <button class="btn btn-sm" onclick="window.print()">
+        <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+        Imprimir
+      </button>
+    </div>
+  </div>`;
+
+  locales.forEach((local, li) => {
+    const colorIdx = li % 10;
+    const lf = filas.filter(r => r.local === local);
+    const totLoc = lf.reduce((a, r) => a + r.sug, 0);
+    const totCan = lf.reduce((a, r) => a + (r.canastos || 0), 0);
+    html += `<div class="card local-card-${colorIdx}">
+      <div class="local-header">
+        <div class="local-name">
+          <div class="local-pin"><svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg></div>
+          ${local}
+        </div>
+        <div style="display:flex;align-items:center;gap:8px">
+          <span class="badge badge-info">${totLoc} unidades</span>
+          ${totCan > 0 ? `<span style="display:inline-flex;align-items:center;gap:4px;background:var(--green-bg);color:var(--green);border-radius:100px;padding:2px 10px;font-size:11px;font-weight:700">🧺 ${totCan} canastos</span>` : ''}
+        </div>
+      </div>
+      <table>
+        <thead><tr>
+          <th style="width:200px">Descripción producto</th>
+          <th style="width:80px">Marca</th>
+          <th style="width:75px;text-align:right">Venta/mes</th>
+          <th style="width:80px;text-align:center">Stock local</th>
+          <th style="width:75px;text-align:right">Sugerido</th>
+          <th style="width:70px;text-align:center">Estado</th>
+          <th style="width:85px;text-align:center">Canastos</th>
+        </tr></thead>
+        <tbody>`;
+    lf.forEach(r => {
+      const badge = r.sug === 0
+        ? `<span class="badge badge-zero">Sin envío</span>`
+        : r.stock === null
+          ? `<span class="badge badge-warn">Sin stock</span>`
+          : `<span class="badge badge-ok">Con stock</span>`;
+      const upcLabel = r.upc ? `<div style="font-size:10px;color:var(--text-muted);margin-top:2px">${r.upc}/canasto</div>` : '';
+      html += `<tr ${r.sug === 0 ? 'class="zero"' : ''}>
+        <td title="${r.producto}">${r.producto}</td>
+        <td>${r.marca}</td>
+        <td style="text-align:right;font-family:'DM Mono',monospace">${r.ventas}</td>
+        <td style="text-align:center;font-family:'DM Mono',monospace">${r.stock !== null ? r.stock : '—'}</td>
+        <td style="text-align:right;font-weight:700;font-family:'DM Mono',monospace;font-size:14px">${r.sug}${r.conSeg ? ` <span style="font-size:9px;font-family:'DM Sans',sans-serif;font-weight:600;color:var(--green);background:var(--green-bg);border-radius:4px;padding:1px 5px;vertical-align:middle">${r.segEsIndiv ? `+${r.canastosExtra}🧺` : '+seg'}</span>` : ''}</td>
+        <td style="text-align:center">${badge}</td>
+        <td style="text-align:center">${canastoBadge(r)}${upcLabel}</td>
+      </tr>`;
+    });
+    html += `</tbody></table></div>`;
+  });
+
+  // Resumen depósito (solo si se ven todos o un local)
+  const skusVista = {};
+  const skusCanVista = {};
+  filasVista.forEach(r => {
+    if (r.sug > 0) {
+      skusVista[r.producto] = (skusVista[r.producto] || 0) + r.sug;
+      if (r.canastos !== null) skusCanVista[r.producto] = (skusCanVista[r.producto] || 0) + r.canastos;
+    }
+  });
+  const skusConEnvio = Object.entries(skusVista);
+  if (skusConEnvio.length) {
+    html += `<div class="resumen-card">
+      <div class="card-title">
+        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>
+        Total a preparar en depósito${localSeleccionado !== 'TODOS' ? ' · ' + localSeleccionado : ''}
+      </div>
+      <table>
+        <thead><tr>
+          <th style="width:240px">Producto</th>
+          <th style="width:90px">Marca</th>
+          <th style="width:80px;text-align:center">Unid/canasto</th>
+          <th style="text-align:right">Total unidades</th>
+          <th style="text-align:center">Total canastos</th>
+        </tr></thead>
+        <tbody>`;
+    skusConEnvio.forEach(([prod, tot]) => {
+      const upc  = skusUpc[prod];
+      const cTot = skusCanVista[prod];
+      html += `<tr>
+        <td title="${prod}">${prod}</td>
+        <td>${skusMarca[prod] || ''}</td>
+        <td style="text-align:center;font-family:'DM Mono',monospace;color:rgba(255,255,255,0.5);font-size:12px">${upc ? upc : '—'}</td>
+        <td style="text-align:right;font-weight:700;font-family:'DM Mono',monospace;font-size:15px">${tot}</td>
+        <td style="text-align:center">${cTot != null
+          ? `<span style="font-family:'DM Mono',monospace;font-weight:700;font-size:16px;color:#86efac">🧺 ${cTot}</span>`
+          : `<span style="color:rgba(255,255,255,0.3);font-size:11px">sin regla</span>`}</td>
+      </tr>`;
+    });
+    html += `</tbody></table></div>`;
+  }
+
+  document.getElementById('orden-out').innerHTML = html;
+}
+
+
+// Extrae unidades por canasto del nombre del producto (para convertir góndola a canastos)
+function detectarUPC(nombre) {
+  const n = nombre.toUpperCase();
+  const reglas = [
+    { re: /\bX\s*30\b|PK\s*30\b/i,  upc: 4  },
+    { re: /\bX\s*25\b|PK\s*25\b/i,  upc: 4  },
+    { re: /\bX\s*24\b|PK\s*24\b/i,  upc: 3  },
+    { re: /\bX\s*15\b|PK\s*15\b/i,  upc: 8  },
+    { re: /\bX\s*12\b|PK\s*12\b/i,  upc: 12 },
+    { re: /\bX\s*10\b|PK\s*10\b/i,  upc: 12 },
+    { re: /\bX\s*6\b|PK\s*6\b|MAPLE\s*ROJO\b/i, upc: 24 },
+  ];
+  for (const r of reglas) { if (r.re.test(n)) return r.upc; }
+  // Buscar cualquier "X N" o "x N" en el nombre
+  const m = n.match(/X\s*(\d+)/i);
+  if (m) return parseInt(m[1]);
+  return 0; // no detectado
+}
+
+// ─── STOCK POR PLANILLA ───────────────────────────────────────────────────
+let stockData = {}; // { local_lower: { sku_lower: cantidad } }
+
+function onDragOver2(e)  { e.preventDefault(); document.getElementById('drop-zone-stock').classList.add('drag-over'); }
+function onDragLeave2(e) { document.getElementById('drop-zone-stock').classList.remove('drag-over'); }
+function onDrop2(e)      { e.preventDefault(); onDragLeave2(e); handleStockFile(e.dataTransfer.files[0]); }
+
+function handleStockFile(file) {
+  if (!file) return;
+  const nom = file.name.toLowerCase();
+  if (nom.endsWith('.csv')) {
+    const reader = new FileReader();
+    reader.onload = ev => procesarStockCSV(ev.target.result, file.name);
+    reader.readAsText(file, 'UTF-8');
+  } else {
+    const reader = new FileReader();
+    reader.onload = ev => {
+      const wb = XLSX.read(ev.target.result, { type: 'array' });
+
+      // Si tiene hoja DB, leer DB (datos reales) + hacer fuzzy match con nombres de Scantech
+      if (wb.SheetNames.includes('DB')) {
+        const rows = XLSX.utils.sheet_to_json(wb.Sheets['DB'], { header: 1, defval: '' });
+        procesarReporteSkuDB(rows, file.name);
+        return;
+      }
+
+      // Buscar la hoja con más datos
+      let sheetName = wb.SheetNames[0];
+      let maxFilas = 0;
+      wb.SheetNames.forEach(sn => {
+        const r = XLSX.utils.sheet_to_json(wb.Sheets[sn], { header: 1, defval: '' });
+        const noVacias = r.filter(row => row.some(c => c !== '')).length;
+        if (noVacias > maxFilas) { maxFilas = noVacias; sheetName = sn; }
+      });
+      const rows = XLSX.utils.sheet_to_json(wb.Sheets[sheetName], { header: 1, defval: '' });
+      procesarStockRows(rows, file.name);
+    };
+    reader.readAsArrayBuffer(file);
+  }
+}
+
+// Parser específico para el Reporte de SKU (hoja DB)
+// Hace fuzzy matching entre los nombres del reporte y los SKUs de Scantech
+function procesarReporteSkuDB(rows, fname) {
+  // Encontrar fila de encabezado (buscar hasta fila 30)
+  let hdrIdx = -1;
+  for (let i = 0; i < Math.min(rows.length, 30); i++) {
+    const cel = (rows[i][0]||'').toString().toLowerCase().trim();
+    if (cel === 'fecha') { hdrIdx = i; break; }
+  }
+  if (hdrIdx < 0) { alert('No se encontró el encabezado "Fecha" en la hoja DB.'); return; }
+
+  // Usar posiciones fijas que sabemos del archivo:
+  // col 3 = Nombre de Punto de interés (local)
+  // col 12 = Producto (SKU)
+  // col 27 = Cantidad de stock góndola (PAQUETES)
+  // col 28 = Cantidad de stock deposito (EN CANASTOS)
+  const _iLocal = 3;
+  const _iSku   = 12;
+  const _iGond  = 27;
+  const _iDepo  = 28;
+
+  // Verificar con encabezados reales
+  const hdr = rows[hdrIdx];
+  console.log('HDR local:', hdr[_iLocal], '| sku:', hdr[_iSku], '| gond:', hdr[_iGond], '| depo:', hdr[_iDepo]);
+
+  stockData = {};
+  let cuenta = 0;
+
+  rows.slice(hdrIdx + 1).forEach(r => {
+    const local = (r[_iLocal] || '').toString().trim();
+    const sku   = (r[_iSku]   || '').toString().trim();
+    if (!local || !sku) return;
+
+    const gond = parseFloat((r[_iGond] || '').toString().replace(',','.')) || 0;
+    const depo = parseFloat((r[_iDepo] || '').toString().replace(',','.')) || 0;
+    if (gond === 0 && depo === 0) return; // sin stock, omitir
+
+    const upc = detectarUPC(sku);
+    // Stock SIEMPRE en unidades para que sea comparable con ventas
+    // Góndola ya está en paquetes (unidades)
+    // Depósito está en canastos → multiplicar por upc para pasarlo a unidades
+    const depoUnidades = upc > 0 ? depo * upc : depo;
+    const total = parseFloat((gond + depoUnidades).toFixed(2));
+
+    // Guardar con clave normalizada (local y sku)
+    const lk = normalizar(local);
+    const sk = normalizar(sku);
+    if (!stockData[lk]) stockData[lk] = {};
+    stockData[lk][sk] = total;
+    cuenta++;
+    console.log(`  STOCK: ${local} | ${sku} | gondola=${gond}un + depo=${depo}can×${upc}=${depoUnidades}un = ${total}un`);
+  });
+
+  if (!cuenta) {
+    alert('Se encontró el encabezado pero no hay filas con stock > 0.\n\nRevisá que el archivo tenga datos de stock cargados.');
+    return;
+  }
+
+  const locales = Object.keys(stockData).length;
+  const skus    = Object.values(stockData).reduce((a,o) => a + Object.keys(o).length, 0);
+
+  aplicarStockAlTabla();
+
+  document.getElementById('stock-status').style.display = 'block';
+  document.getElementById('stock-status-txt').innerHTML =
+    `✅ <strong>Reporte de SKU cargado</strong> — ${locales} locales · ${skus} productos con stock<br>
+     <span style="font-size:11px;opacity:.8">Stock en <strong>unidades</strong>: góndola (paquetes) + depósito (canastos × upc). Listo para restar a ventas.</span>`;
+  mostrarToast(`✅ Stock cargado: ${locales} locales · ${skus} SKUs`);
+}
+
+function normalizar(str) {
+  return str.toString().toLowerCase()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '') // quitar tildes
+    .replace(/[^\w\s\d]/g, ' ')
+    .replace(/\s+/g, ' ').trim();
+}
+
+function palabrasClave(str) {
+  const stopwords = new Set(['de','el','la','los','las','un','una','en','y','x','pk','un','und','uni','con','para','por','del']);
+  return normalizar(str).split(' ').filter(p => p.length > 1 && !stopwords.has(p));
+}
+
+function encontrarLocalScantech(localNorm) {
+  // Buscar en los locales cargados de data
+  const locales = [...new Set(data.map(r => r.local))];
+  const palabras = palabrasClave(localNorm);
+  let mejorMatch = null, mejorScore = 0;
+  locales.forEach(l => {
+    const lnorm = normalizar(l);
+    const score = palabras.filter(p => lnorm.includes(p)).length;
+    if (score > mejorScore) { mejorScore = score; mejorMatch = l.toLowerCase(); }
+  });
+  return mejorScore > 0 ? mejorMatch : null;
+}
+
+function encontrarSkuScantech(skuNorm) {
+  // Buscar en los SKUs cargados de data
+  const skus = [...new Set(data.map(r => r.producto))];
+  const palabras = palabrasClave(skuNorm);
+  if (!palabras.length) return null;
+  let mejorMatch = null, mejorScore = 0;
+  skus.forEach(s => {
+    const snorm = normalizar(s);
+    const score = palabras.filter(p => snorm.includes(p)).length;
+    // Exigir al menos 2 palabras clave coincidentes o el 60% de las palabras
+    if (score >= Math.max(2, Math.ceil(palabras.length * 0.6)) && score > mejorScore) {
+      mejorScore = score; mejorMatch = s.toLowerCase();
+    }
+  });
+  return mejorMatch;
+}
+
+function procesarStockCSV(texto, fname) {
+  // Detectar separador
+  const primera = texto.split('\n')[0] || '';
+  const sep = primera.includes(';') ? ';' : ',';
+  const rows = texto.replace(/^\uFEFF/,'').split('\n')
+    .filter(l => l.trim())
+    .map(l => l.split(sep).map(c => c.trim().replace(/^"|"$/g,'')));
+  procesarStockRows(rows, fname);
+}
+
+function procesarStockRows(rows, fname) {
+  if (!rows || rows.length < 2) { alert('El archivo de stock está vacío o no tiene datos.'); return; }
+
+  // ── Detectar si es el formato "Reporte de SKU" ─────────────────────────
+  // Buscar la fila de encabezado real (puede estar en fila 16 aprox)
+  let hdrIdx = -1;
+  for (let i = 0; i < Math.min(rows.length, 25); i++) {
+    const cel = (rows[i][0] || '').toString().toLowerCase();
+    if (cel === 'fecha') { hdrIdx = i; break; }
+  }
+
+  if (hdrIdx >= 0) {
+    const hdr = rows[hdrIdx].map(c => (c||'').toString().toLowerCase().trim());
+    const iLocal  = hdr.findIndex(h => h.includes('nombre de punto') || h.includes('nombre del punto') || h.includes('punto de interés') || h === 'nombre de punto de interés');
+    const iSku    = hdr.findIndex(h => h === 'producto');
+    const iGond   = hdr.findIndex(h => h.includes('góndola') || h.includes('gondola'));
+    const iDepo   = hdr.findIndex(h => h.includes('deposito') || h.includes('depósito'));
+
+    if (iLocal >= 0 && iSku >= 0 && iGond >= 0 && iDepo >= 0) {
+      // Es el Reporte de SKU — procesar con conversión de unidades a canastos
+      stockData = {};
+      let cuenta = 0;
+
+      rows.slice(hdrIdx + 1).forEach(r => {
+        const local   = (r[iLocal] || '').toString().trim();
+        const sku     = (r[iSku]   || '').toString().trim();
+        const gondola = parseFloat((r[iGond] || '0').toString().replace(',','.')) || 0;
+        const depo    = parseFloat((r[iDepo] || '0').toString().replace(',','.')) || 0;
+
+        if (!local || !sku) return;
+
+        // Detectar unidades por canasto del nombre del SKU (mismo sistema que calcCanastos)
+        const upc = detectarUPC(sku);
+        // Convertir góndola (paquetes) a canastos y sumar depósito
+        const gondCanastos = upc > 0 ? gondola / upc : 0;
+        const stockTotal   = gondCanastos + depo;
+
+        const localKey = local.toLowerCase();
+        const skuKey   = sku.toLowerCase();
+        if (!stockData[localKey]) stockData[localKey] = {};
+        stockData[localKey][skuKey] = parseFloat(stockTotal.toFixed(2));
+        cuenta++;
+      });
+
+      if (!cuenta) { alert('No se encontraron filas con datos en el Reporte de SKU.'); return; }
+
+      const locales = Object.keys(stockData).length;
+      const skus    = Object.values(stockData).reduce((a,o) => a + Object.keys(o).length, 0);
+      aplicarStockAlTabla();
+      document.getElementById('stock-status').style.display = 'block';
+      document.getElementById('stock-status-txt').innerHTML =
+        `✅ Stock cargado desde <strong>${fname}</strong> (Reporte de SKU) — <strong>${locales} locales</strong> · <strong>${skus} SKUs</strong><br>
+         <span style="font-size:11px;opacity:.8">Góndola convertida a canastos + depósito sumado automáticamente</span>`;
+      mostrarToast(`✅ Stock cargado: ${locales} locales · ${skus} SKUs`);
+      return;
+    }
+  }
+
+  // ── Formato genérico (columnas: Local, Producto, Stock) ────────────────
+  const hdr = rows[0].map(c => (c||'').toString().toLowerCase().trim());
+  const iLocal = hdr.findIndex(h => h.includes('local') || h.includes('pdv') || h.includes('sucursal') || h.includes('nombre pdv'));
+  const iSku   = hdr.findIndex(h => h.includes('producto') || h.includes('sku') || h.includes('descripcion') || h.includes('nombre'));
+  const iStk   = hdr.findIndex(h => h.includes('stock') || h.includes('existencia') || h.includes('cantidad') || h.includes('inventario'));
+
+  if (iLocal < 0 || iSku < 0 || iStk < 0) {
+    alert(`No se encontraron las columnas necesarias.\n\nColumnas encontradas: ${hdr.filter(Boolean).join(' · ')}`);
+    return;
+  }
+
+  stockData = {};
+  let cuenta = 0;
+  rows.slice(1).forEach(r => {
+    const local = (r[iLocal]||'').toString().trim().toLowerCase();
+    const sku   = (r[iSku]  ||'').toString().trim().toLowerCase();
+    const stk   = parseFloat((r[iStk]||'0').toString().replace(',','.')) || 0;
+    if (!local || !sku) return;
+    if (!stockData[local]) stockData[local] = {};
+    stockData[local][sku] = stk;
+    cuenta++;
+  });
+
+  if (!cuenta) { alert('No se encontraron filas con datos válidos de stock.'); return; }
+
+  const locales = Object.keys(stockData).length;
+  const skus    = Object.values(stockData).reduce((a,o) => a + Object.keys(o).length, 0);
+  aplicarStockAlTabla();
+  document.getElementById('stock-status').style.display = 'block';
+  document.getElementById('stock-status-txt').innerHTML =
+    `✅ Stock cargado desde <strong>${fname}</strong> — <strong>${locales} locales</strong> · <strong>${skus} SKUs</strong>`;
+  mostrarToast(`✅ Stock cargado: ${locales} locales · ${skus} SKUs`);
+}
+
+function buscarStockLocal(localNombre) {
+  const n = normalizar(localNombre);
+  // Exacto primero
+  if (stockData[n]) return stockData[n];
+  // Coincidencia parcial por palabras clave
+  let mejorMatch = null, mejorScore = 0;
+  const palabras = palabrasClave(n);
+  for (const k of Object.keys(stockData)) {
+    const score = palabras.filter(p => k.includes(p)).length;
+    if (score > mejorScore && score >= Math.max(1, Math.ceil(palabras.length * 0.5))) {
+      mejorScore = score; mejorMatch = k;
+    }
+  }
+  return mejorMatch ? stockData[mejorMatch] : null;
+}
+
+function buscarStockSku(localStock, skuNombre) {
+  if (!localStock) return null;
+  const s = normalizar(skuNombre);
+  // Exacto primero
+  if (localStock[s] !== undefined) return localStock[s];
+  // Coincidencia por palabras clave
+  const palabras = palabrasClave(s);
+  let mejorMatch = null, mejorScore = 0;
+  for (const k of Object.keys(localStock)) {
+    const score = palabras.filter(p => k.includes(p)).length;
+    if (score >= Math.max(2, Math.ceil(palabras.length * 0.6)) && score > mejorScore) {
+      mejorScore = score; mejorMatch = k;
+    }
+  }
+  return mejorMatch !== null ? localStock[mejorMatch] : null;
+}
+
+function aplicarStockAlTabla() {
+  if (!Object.keys(stockData).length) return;
+  let aplicados = 0;
+  data.forEach((r, idx) => {
+    const localStk = buscarStockLocal(r.local);
+    const val = buscarStockSku(localStk, r.producto);
+    const el = document.getElementById(`st-${idx}`);
+    if (el && val !== null && val !== undefined) {
+      el.value = val;
+      el.style.background = 'var(--green-bg)';
+      el.style.borderColor = 'var(--green)';
+      actualizarSemaforo(idx, val, r.ventas / 4);
+      aplicados++;
+    }
+  });
+  console.log(`aplicarStockAlTabla: ${aplicados} inputs actualizados de ${data.length} filas`);
+  verificarAlertas();
+}
+
+function limpiarStock() {
+  stockData = {};
+  document.getElementById('stock-status').style.display = 'none';
+  document.getElementById('fi-stock').value = '';
+  // Limpiar inputs
+  data.forEach((_, idx) => {
+    const el = document.getElementById(`st-${idx}`);
+    if (el) { el.value = ''; el.style.background = ''; el.style.borderColor = ''; }
+  });
+  mostrarToast('🗑️ Stock eliminado');
+}
+
+function mostrarToast(msg) {
+  const t = document.createElement('div');
+  t.style.cssText = 'position:fixed;bottom:20px;right:20px;background:#2d6a4f;color:white;padding:12px 18px;border-radius:8px;font-size:13px;font-weight:600;z-index:9999;box-shadow:0 4px 12px rgba(0,0,0,0.2)';
+  t.textContent = msg;
+  document.body.appendChild(t);
+  setTimeout(() => t.remove(), 3500);
+}
+// ──────────────────────────────────────────────────────────────────────────
+
+function calcular() {
+  if (!data.length) { alert('Primero cargá al menos un archivo de Scantech.'); return; }
+
+  const tieneStockArchivo = Object.keys(stockData).length > 0;
+  const locales = [...new Set(data.map(r => r.local))];
+  const filas = data
+    .filter(r => estaActivo(r.producto)) // excluir desactivados
+    .map((r, idx) => {
+    // Prioridad: input manual → stock del archivo → null
+    const stEl  = document.getElementById(`st-${idx}`);
+    const stVal = stEl ? stEl.value.trim() : '';
+    let st = stVal !== '' ? parseFloat(stVal) : null;
+
+    if (st === null && tieneStockArchivo) {
+      const localStk = buscarStockLocal(r.local);
+      const val = buscarStockSku(localStk, r.producto);
+      if (val !== null && val !== undefined) st = val;
+    }
+
+    const sugCrudo = st === null ? (r.ventas + 2) : Math.max(0, r.ventas - st + 2);
+    const info = calcCanastos(r.producto, sugCrudo);
+
+    // Stock de seguridad: canastos extra a sumar
+    // Prioridad: seg individual del producto (si está activo) > seg global (+1 canasto)
+    // Si ambos activos, se usan los canastos del individual (el usuario ya definió cuánto quiere)
+    let canastosExtra = 0;
+    const segIndiv = segProducto[r.producto]; // undefined si no está activo
+    if (segIndiv !== undefined && segIndiv > 0) {
+      canastosExtra = segIndiv;
+    } else if (stockSeguridad) {
+      canastosExtra = 1; // +1 canasto global
+    }
+
+    let sugFinal = info.sugAjustado;
+    let canastosFinal = info.canastos;
+    const tieneUpc = info.upc !== null;
+    if (canastosExtra > 0 && tieneUpc && canastosFinal !== null && sugFinal > 0) {
+      sugFinal      = sugFinal + (canastosExtra * info.upc);
+      canastosFinal = canastosFinal + canastosExtra;
+    }
+    const modSeg = canastosExtra > 0 && tieneUpc && canastosFinal !== null;
+    return { ...r, stock: st, sug: sugFinal, canastos: canastosFinal, upc: info.upc,
+             conSeg: modSeg, canastosExtra, segEsIndiv: segIndiv !== undefined };
+  });
+
+  const skusTot = {}, skusMarca = {}, skusCan = {}, skusUpc = {};
+  filas.forEach(r => {
+    skusTot[r.producto] = (skusTot[r.producto] || 0) + r.sug;
+    skusMarca[r.producto] = r.marca;
+    skusUpc[r.producto] = r.upc;
+    if (r.canastos !== null) skusCan[r.producto] = (skusCan[r.producto] || 0) + r.canastos;
+  });
+
+  window._ordenFilas   = filas;
+  window._ordenLocales = locales;
+  window._skusTot      = skusTot;
+  window._skusMarca    = skusMarca;
+  window._skusCan      = skusCan;
+  window._skusUpc      = skusUpc;
+
+  localSeleccionado = 'TODOS';
+  renderFiltroChips(locales);
+  renderOrden(filas, locales, skusTot, skusMarca, skusCan, skusUpc);
+  guardarEnHistorial(filas);
+  showTab('orden');
+}
+
+function exportarExcel() {
+  if (!window._ordenFilas) return;
+  const wb = XLSX.utils.book_new();
+
+  window._ordenLocales.forEach(local => {
+    const lf = window._ordenFilas.filter(r => r.local === local);
+    const wsData = [
+      ['Producto', 'Marca', 'Venta/mes', 'Stock local', 'Sugerido (ajustado)', 'Unid/canasto', 'Canastos'],
+      ...lf.map(r => [
+        r.producto, r.marca, r.ventas,
+        r.stock !== null ? r.stock : '',
+        r.sug,
+        r.upc !== null ? r.upc : '',
+        r.canastos !== null ? r.canastos : ''
+      ])
+    ];
+    const ws = XLSX.utils.aoa_to_sheet(wsData);
+    ws['!cols'] = [{wch:38},{wch:15},{wch:12},{wch:12},{wch:18},{wch:14},{wch:12}];
+    XLSX.utils.book_append_sheet(wb, ws, local.substring(0, 31));
+  });
+
+  const resData = [
+    ['Producto', 'Marca', 'Unid/canasto', 'Total unidades', 'Total canastos'],
+    ...Object.entries(window._skusTot).filter(([,v])=>v>0).map(([p,t]) => [
+      p,
+      window._skusMarca[p] || '',
+      window._skusUpc[p]   != null ? window._skusUpc[p] : '',
+      t,
+      window._skusCan[p]   != null ? window._skusCan[p] : ''
+    ])
+  ];
+  const wsRes = XLSX.utils.aoa_to_sheet(resData);
+  wsRes['!cols'] = [{wch:38},{wch:15},{wch:14},{wch:15},{wch:15}];
+  XLSX.utils.book_append_sheet(wb, wsRes, 'RESUMEN DEPÓSITO');
+
+  XLSX.writeFile(wb, `Orden_Polakof_${new Date().toISOString().slice(0,10)}.xlsx`);
+}
+
+function cargarEjemplo() {
+  data = [
+    {local:'Pocitos', producto:'HUEVOS ROSADOS PK 30 UN',          marca:'EL DORADO',  ventas:35},
+    {local:'Pocitos', producto:'HUEVOS DOÑA CLARA MAPLE ROJO 6 UN', marca:'DOÑA CLARA', ventas:73},
+    {local:'Pocitos', producto:'HUEVOS ROSADOS PK 15 UN',           marca:'EL DORADO',  ventas:120},
+    {local:'Pocitos', producto:'HUEVOS PRODHIN JUMBO ROSADO 12 UN', marca:'PRODHIN',    ventas:1},
+    {local:'Pocitos', producto:'HUEVOS PRODHN MARRON EXTRA 6 UN',   marca:'PRODHIN',    ventas:26},
+    {local:'Pocitos', producto:'HUEVOS ROSADOS 10 UN',              marca:'EL DORADO',  ventas:84},
+    {local:'Pocitos', producto:'HUEVOS PRODHIN ROSADOS MAPLES 15 UN',marca:'PRODHIN',   ventas:18},
+    {local:'Prado',   producto:'HUEVOS ROSADOS PK 30 UN',           marca:'EL DORADO',  ventas:20},
+    {local:'Prado',   producto:'HUEVOS DOÑA CLARA MAPLE ROJO 6 UN', marca:'DOÑA CLARA', ventas:50},
+    {local:'Prado',   producto:'HUEVOS ROSADOS PK 15 UN',           marca:'EL DORADO',  ventas:88},
+    {local:'Prado',   producto:'HUEVOS PRODHIN JUMBO ROSADO 12 UN', marca:'PRODHIN',    ventas:5},
+    {local:'Prado',   producto:'HUEVOS PRODHN MARRON EXTRA 6 UN',   marca:'PRODHIN',    ventas:15},
+    {local:'Prado',   producto:'HUEVOS ROSADOS 10 UN',              marca:'EL DORADO',  ventas:62},
+    {local:'Malvín',  producto:'HUEVOS ROSADOS PK 30 UN',           marca:'EL DORADO',  ventas:42},
+    {local:'Malvín',  producto:'HUEVOS DOÑA CLARA MAPLE ROJO 6 UN', marca:'DOÑA CLARA', ventas:85},
+    {local:'Malvín',  producto:'HUEVOS ROSADOS PK 15 UN',           marca:'EL DORADO',  ventas:145},
+    {local:'Malvín',  producto:'HUEVOS PRODHN MARRON EXTRA 6 UN',   marca:'PRODHIN',    ventas:30},
+    {local:'Malvín',  producto:'HUEVOS ROSADOS 10 UN',              marca:'EL DORADO',  ventas:98},
+  ];
+  render();
+}
+
+
+// ─── HISTORIAL — Google Sheets ────────────────────────────────────────────
+const GS_URL = 'https://script.google.com/macros/s/AKfycbyq72YxrOqfNu39D0Lzgd0e4J8jFT1u5oEcWvFtINpGO8zhJAnylUjZ5FYY2tRYdQU/exec';
+
+// Cache en memoria para no pedir a Sheets cada vez que se abre el modal
+let _histCache = null;
+let _histCacheTs = 0;
+
+async function cargarHistorial() {
+  // Usar cache si tiene menos de 2 minutos
+  if (_histCache && (Date.now() - _histCacheTs) < 120000) return _histCache;
+  try {
+    const res = await fetch(GS_URL);
+    const data = await res.json();
+    _histCache = Array.isArray(data) ? data : [];
+    _histCacheTs = Date.now();
+    return _histCache;
+  } catch(e) {
+    console.warn('Error cargando historial de Sheets:', e);
+    return _histCache || [];
+  }
+}
+
+async function guardarEnHistorial(filas) {
+  const locales = [...new Set(filas.map(r => r.local))];
+  const localesConEnvio = locales.map(local => ({
+    nombre: local,
+    productos: filas.filter(r => r.local === local && r.sug > 0).map(r => ({
+      producto: r.producto, marca: r.marca,
+      ventas: r.ventas, stock: r.stock,
+      sug: r.sug, canastos: r.canastos, upc: r.upc
+    }))
+  })).filter(l => l.productos.length > 0);
+
+  if (!localesConEnvio.length) return;
+
+  const fecha = new Date().toISOString();
+  const entradaId = Date.now();
+
+  // Armar una fila por producto por local
+  const filasSheeets = [];
+  localesConEnvio.forEach(l => {
+    l.productos.forEach(p => {
+      filasSheeets.push({
+        entradaId,
+        fecha,
+        local: l.nombre,
+        producto: p.producto,
+        marca: p.marca,
+        ventasMes: p.ventas,
+        stockLocal: p.stock !== null && p.stock !== undefined ? p.stock : '',
+        sugerido: p.sug,
+        unidPorCanasto: p.upc || '',
+        canastos: p.canastos || ''
+      });
+    });
+  });
+
+  if (!filasSheeets.length) return;
+
+  fetch(GS_URL, {
+    method: 'POST',
+    body: JSON.stringify({ tipo: 'historial_detalle', filas: filasSheeets })
+  }).catch(e => console.warn('Error guardando en Sheets:', e));
+
+  _histCache = null;
+}
+
+async function abrirHistorialLocal(local) {
+  document.getElementById('modal-local-nombre').textContent = local.nombre;
+  document.getElementById('modal-local-dir').textContent = local.direccion + ' · ' + local.dpto;
+  const body = document.getElementById('modal-body');
+  body.innerHTML = `<div class="hist-empty"><div class="hist-empty-icon" style="font-size:28px">⏳</div>Cargando historial…</div>`;
+  document.getElementById('modal-hist').classList.add('open');
+
+  const hist = await cargarHistorial();
+
+  const nombreDir = local.nombre.toLowerCase();
+  const palabrasDir = nombreDir.replace(/el dorado\s*-?\s*/i,'').trim().split(/\s+/);
+
+  const entradas = hist.filter(e => {
+    const n = (e.local || '').toLowerCase();
+    return n === nombreDir || palabrasDir.some(p => p.length > 3 && n.includes(p));
+  }).sort((a,b) => new Date(b.fecha) - new Date(a.fecha));
+
+  if (!entradas.length) {
+    body.innerHTML = `<div class="hist-empty"><div class="hist-empty-icon">📭</div>Todavía no hay envíos registrados para este local.<br><span style="font-size:12px;margin-top:6px;display:block">Los envíos se guardan automáticamente al calcular la orden.</span></div>`;
+    return;
+  }
+
+  body.innerHTML = entradas.map((e, ei) => {
+    const fecha   = new Date(e.fecha);
+    const fechaStr = fecha.toLocaleDateString('es-UY', {weekday:'long', year:'numeric', month:'long', day:'numeric'});
+    const horaStr  = fecha.toLocaleTimeString('es-UY', {hour:'2-digit', minute:'2-digit'});
+    const prods    = Array.isArray(e.productos) ? e.productos : [];
+    const totSug   = e.totalUnidades || prods.reduce((a,p)=>a+p.sug,0);
+    const totCan   = e.totalCanastos || prods.reduce((a,p)=>a+(p.canastos||0),0);
+    return `<div class="hist-entry">
+      <div class="hist-entry-hdr" onclick="toggleHist(${ei})">
+        <div>
+          <div class="hist-fecha">${fechaStr}</div>
+          <div class="hist-meta">${horaStr} hs</div>
+        </div>
+        <div class="hist-badges">
+          <span class="badge badge-info">${totSug} unidades</span>
+          ${totCan>0?`<span class="dir-hist-badge">🧺 ${totCan} canastos</span>`:''}
+          <span style="color:var(--text-muted);font-size:18px" id="hist-arrow-${ei}">›</span>
+        </div>
+      </div>
+      <div class="hist-body" id="hist-body-${ei}">
+        ${prods.length ? `<table class="hist-table">
+          <thead><tr>
+            <th>Producto</th><th>Marca</th>
+            <th style="text-align:right">Venta</th>
+            <th style="text-align:center">Stock</th>
+            <th style="text-align:right">Enviado</th>
+            <th style="text-align:center">Canastos</th>
+          </tr></thead>
+          <tbody>
+            ${prods.map(p=>`<tr>
+              <td title="${p.producto}" style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${p.producto}</td>
+              <td>${p.marca||''}</td>
+              <td style="text-align:right;font-family:'DM Mono',monospace">${p.ventas}</td>
+              <td style="text-align:center;font-family:'DM Mono',monospace">${p.stock!==null&&p.stock!==undefined?p.stock:'—'}</td>
+              <td style="text-align:right;font-weight:700;font-family:'DM Mono',monospace">${p.sug}</td>
+              <td style="text-align:center">${p.canastos?`<span class="dir-hist-badge">🧺 ${p.canastos}</span>`:'—'}</td>
+            </tr>`).join('')}
+          </tbody>
+        </table>` : '<div style="padding:10px;color:var(--text-muted);font-size:12px">Sin detalle de productos.</div>'}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function toggleHist(idx) {
+  const body  = document.getElementById(`hist-body-${idx}`);
+  const arrow = document.getElementById(`hist-arrow-${idx}`);
+  const open  = body.classList.toggle('open');
+  arrow.textContent = open ? '⌄' : '›';
+}
+
+function cerrarModal(e) {
+  if (e.target === document.getElementById('modal-hist'))
+    document.getElementById('modal-hist').classList.remove('open');
+}
+
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') document.getElementById('modal-hist').classList.remove('open');
+});
+
+// Al abrir el directorio, refrescar badges de historial
+async function refrescarBadgesHistorial() {
+  if (!document.getElementById('dir-grid')) return;
+  _histCache = null;
+  await cargarHistorial();
+  filtrarDirectorio();
+}
+// ──────────────────────────────────────────────────────────────────────────
+
+
+// ─── DIRECTORIO LOCALES POLAKOF ───────────────────────────────────────────
+const LOCALES_POLAKOF = [
+  {codigo:"1851",nombre:"El Dorado - RIO BRANCO",direccion:"VIRREY ARREDONDO Y VAPOR CEBOLLATI",dpto:"CERRO LARGO"},
+  {codigo:"1951",nombre:"El Dorado - MERCADO 18",direccion:"DODERA 882",dpto:"MALDONADO"},
+  {codigo:"2051",nombre:"El Dorado - MELO",direccion:"JUSTINO MUNIZ Y HERRERA",dpto:"CERRO LARGO"},
+  {codigo:"2151",nombre:"El Dorado - MERCADO 25",direccion:"TOBIAS POLAKOF 1031 Y JOAQUIN DE VIANA",dpto:"MALDONADO"},
+  {codigo:"2251",nombre:"El Dorado - MERCADO AIGUA",direccion:"AV. AIGUA Y MONTERROSO",dpto:"MALDONADO"},
+  {codigo:"2351",nombre:"El Dorado - MERCADO VELAZQUEZ",direccion:"AV BATLLE Y ORDONEZ Y MITRE",dpto:"MALDONADO"},
+  {codigo:"2451",nombre:"El Dorado - Treinta y tres CENTRO",direccion:"BASILIO ARAUJO 1067",dpto:"TREINTA Y TRES"},
+  {codigo:"2551",nombre:"El Dorado - VENTAS POR MAYOR",direccion:"RUTA 39 VENTAS",dpto:"MALDONADO"},
+  {codigo:"2751",nombre:"El Dorado - Treinta y tres OBELISCO",direccion:"ENRIQUE RODO 1559",dpto:"TREINTA Y TRES"},
+  {codigo:"2851",nombre:"El Dorado - LA BARRA",direccion:"RUTA 10",dpto:"MALDONADO"},
+  {codigo:"2951",nombre:"El Dorado - Treinta y tres EL ARCO",direccion:"MANUEL MELENDEZ Y JUAN ROSAS",dpto:"TREINTA Y TRES"},
+  {codigo:"3151",nombre:"El Dorado - BOULEVAR",direccion:"Tacuarembo Y BULEVAR ARTIGAS",dpto:"MALDONADO"},
+  {codigo:"3351",nombre:"El Dorado - PARADA 2",direccion:"AV. FRANCIA PARADA 2",dpto:"MALDONADO"},
+  {codigo:"3451",nombre:"El Dorado - LAS PIEDRAS",direccion:"AV. INSTRUCCIONES DEL ANO XIII, 609.",dpto:"CANELONES"},
+  {codigo:"3551",nombre:"El Dorado - GORLERO",direccion:"CALLE 29 Y GORLERO",dpto:"MALDONADO"},
+  {codigo:"3651",nombre:"El Dorado - CERRO PELADO",direccion:"CERRO PELADO",dpto:"MALDONADO"},
+  {codigo:"3851",nombre:"El Dorado - SAN CARLOS CENTRO",direccion:"25 DE AGOSTO Y SARANDI",dpto:"MALDONADO"},
+  {codigo:"3951",nombre:"El Dorado - SAN CARLOS AVENIDA",direccion:"AV. CEBERIO Y RINCON",dpto:"MALDONADO"},
+  {codigo:"4051",nombre:"El Dorado - SANTA LUCIA",direccion:"RIVERA Y ARTIGAS",dpto:"CANELONES"},
+  {codigo:"4151",nombre:"El Dorado - AIGUA (CIUDAD)",direccion:"GRAL. DE LA LLANA Y M.MUNIZ",dpto:"MALDONADO"},
+  {codigo:"4351",nombre:"El Dorado - MINAS CENTRO",direccion:"MORALES ARRILLAGA 757 ESQ.CARABAJAL",dpto:"LAVALLEJA"},
+  {codigo:"4551",nombre:"El Dorado - MINAS AVENIDA",direccion:"LUIS ALBERTO DE HERRERA 515",dpto:"LAVALLEJA"},
+  {codigo:"4651",nombre:"El Dorado - MINAS 3",direccion:"AV. 18 DE JULIO Y CLAUDIO WILLIMAN",dpto:"LAVALLEJA"},
+  {codigo:"4751",nombre:"El Dorado - Rocha RUTA",direccion:"RUTA 9 KM 207",dpto:"ROCHA"},
+  {codigo:"5051",nombre:"El Dorado - MERCADO PAN DE AZUCAR",direccion:"FELIX DE LIZARZA 775",dpto:"MALDONADO"},
+  {codigo:"5151",nombre:"El Dorado - PIRIAPOLIS 552 SIMON DEL PINO",direccion:"SIMON DEL PINO Y MISIONES",dpto:"MALDONADO"},
+  {codigo:"5251",nombre:"El Dorado - Rocha GENERAL ARTIGAS",direccion:"GRAL ARTIGAS Y RODO",dpto:"ROCHA"},
+  {codigo:"5351",nombre:"El Dorado - SOLIS",direccion:"AV. BARREIRO P.28",dpto:"MALDONADO"},
+  {codigo:"5451",nombre:"El Dorado - SARUBI",direccion:"AV. PIRIA Y TUCUMAN",dpto:"MALDONADO"},
+  {codigo:"5551",nombre:"El Dorado - LA PALOMA ANTARES",direccion:"AV. NICOLAS SOLARI Y ANTARES",dpto:"ROCHA"},
+  {codigo:"5851",nombre:"El Dorado - CHUY",direccion:"ARACHANES 559",dpto:"ROCHA"},
+  {codigo:"6051",nombre:"El Dorado - LA PALOMA",direccion:"AV. SOLARI Y SIRIO",dpto:"ROCHA"},
+  {codigo:"6151",nombre:"El Dorado - LA PEDRERA",direccion:"RUTA 10 Y CALLE PRINCIPAL",dpto:"ROCHA"},
+  {codigo:"6251",nombre:"El Dorado - LASCANO",direccion:"25 DE AGOSTO Y RINCON",dpto:"ROCHA"},
+  {codigo:"6351",nombre:"El Dorado - LA BALCONADA",direccion:"AV. SAGITARIO Y ALFA",dpto:"ROCHA"},
+  {codigo:"6451",nombre:"El Dorado - SUPER ECO LUSSICH",direccion:"AV. LUSSICH Y MESSINA",dpto:"MALDONADO"},
+  {codigo:"6551",nombre:"El Dorado - SOLANAS",direccion:"RUTA 10",dpto:"MALDONADO"},
+  {codigo:"12051",nombre:"El Dorado - PASO DE LOS TOROS",direccion:"CARLOS BERRUTI Y FLORENCIO SANCHEZ",dpto:"TACUAREMBO"},
+  {codigo:"12151",nombre:"El Dorado - EL DORADO PINARES",direccion:"LEANDRO GOMEZ Y MANOLO LIMA",dpto:"MALDONADO"},
+  {codigo:"12251",nombre:"El Dorado - LAS TOSCAS",direccion:"MARIO FERREIRA ENTRE CALLE D Y E",dpto:"CANELONES"},
+  {codigo:"12651",nombre:"El Dorado - PLAYA PASCUAL",direccion:"RIO DE LA PLATA Y ACUNA DE FIGUEROA",dpto:"SAN JOSE"},
+  {codigo:"12851",nombre:"El Dorado - LA TUNA",direccion:"CHARRUAS Y GENERAL ARTIGAS",dpto:"CANELONES"},
+  {codigo:"13251",nombre:"El Dorado - VIALIDAD",direccion:"FRANCISO MARTINEZ Y CNO DE LOS GAUCHOS",dpto:"MALDONADO"},
+  {codigo:"13351",nombre:"El Dorado - SAN CARLOS 3",direccion:"AV. W. FERREIRA ALDUNATE ESQ.ISLAS CANAR",dpto:"MALDONADO"},
+  {codigo:"13451",nombre:"El Dorado - LAS FLORES",direccion:"RUTA 10 Y LAS VIOLETAS",dpto:"MALDONADO"},
+  {codigo:"13751",nombre:"El Dorado - TERRA BIO",direccion:"DODERA ESQ.ITUZANGO",dpto:"MALDONADO"},
+  {codigo:"13851",nombre:"El Dorado - APP EL DORADO EN CASA",direccion:"AV. LUSSICH Y MESSINA",dpto:"MALDONADO"},
+  {codigo:"13951",nombre:"El Dorado - SARANDI GRANDE",direccion:"LIBERTAD 1034, ESQ AVDA. ARTIGAS",dpto:"FLORIDA"},
+  {codigo:"14051",nombre:"El Dorado - P DE LOS TOROS 2",direccion:"ANGELA BALSAMO DE LOPEZ",dpto:"TACUAREMBO"},
+  {codigo:"14151",nombre:"El Dorado - SUPER ECO (VARELA)",direccion:"DR. PODESTA CARNELLI",dpto:"LAVALLEJA"},
+  {codigo:"14251",nombre:"El Dorado - DOLORES",direccion:"CARLOS PUIG Y ADALBERTO SCHUSTER",dpto:"SORIANO"},
+  {codigo:"14351",nombre:"El Dorado - MERCEDES",direccion:"COLON Y EUSEBIO GIMENEZ",dpto:"SORIANO"},
+  {codigo:"14451",nombre:"El Dorado - MELO MAYORISTA",direccion:"REMIGIO CASTELLANOS 1106",dpto:"CERRO LARGO"},
+  {codigo:"14551",nombre:"El Dorado - Paysandu",direccion:"AV. BVAR ARTIGAS 5242 ESQ SALTO",dpto:"PAYSANDU"},
+  {codigo:"14651",nombre:"El Dorado - CARDONA",direccion:"LIBERTAD ESQ. FLORENCIO SANCHEZ",dpto:"SORIANO"},
+  {codigo:"14751",nombre:"El Dorado - OKI MARKET",direccion:"Montevideo",dpto:"MONTEVIDEO"},
+  {codigo:"14851",nombre:"El Dorado - FRAY BENTOS",direccion:"ZORRILLA DE SAN MARTIN, ESQ. BEAULIEU",dpto:"RIO NEGRO"},
+  {codigo:"14951",nombre:"El Dorado - Colonia",direccion:"AV. JOSE BATLLE Y ORDONEZ Y RUTA 21",dpto:"COLONIA"},
+  {codigo:"15051",nombre:"El Dorado - BALNEARIO BS AS",direccion:"CALLE 49 Y 25 - BALRIO. BUENOS AIRES",dpto:"MALDONADO"},
+  {codigo:"15251",nombre:"El Dorado - RUTA 39",direccion:"RUTA 39 - KM 7200",dpto:"MALDONADO"},
+  {codigo:"15351",nombre:"El Dorado - NUEVA PALMIRA",direccion:"JOSE ENRIQUE RODO Y ARGENTINA",dpto:"COLONIA"},
+  {codigo:"15451",nombre:"El Dorado - San Jose",direccion:"ITUZANGO ENTRE ASAMBLEA Y CIGANDA",dpto:"SAN JOSE"},
+  {codigo:"15551",nombre:"El Dorado - MVD PLAZA MATRIZ",direccion:"18 DE JULIO & PLAZA MATRIZ",dpto:"MONTEVIDEO"},
+  {codigo:"15651",nombre:"El Dorado - MVD 18 & PABLO DE MARIA",direccion:"18 DE JULIO & PABLO DE MARIA",dpto:"MONTEVIDEO"},
+  {codigo:"15751",nombre:"El Dorado - MVD 18 & TRISTAN NARVAJA",direccion:"18 DE JULIO Y TRISTAN NARVAJA",dpto:"MONTEVIDEO"},
+  {codigo:"15851",nombre:"El Dorado - MEDANOS DE SOLYMAR",direccion:"Avda Giannasttasio y Av de los Medanos",dpto:"CANELONES"},
+  {codigo:"15951",nombre:"El Dorado - GARIBALDI (L 2050)",direccion:"Avda Gral Garibaldi 2579",dpto:"MONTEVIDEO"},
+  {codigo:"16051",nombre:"El Dorado - E-Commerce Garibaldi (L2099)",direccion:"Avda Gral Garibaldi 2579",dpto:"MONTEVIDEO"},
+  {codigo:"16151",nombre:"El Dorado - COSTA URBANA",direccion:"Avda Giannattasio km 20,200",dpto:"CANELONES"},
+  {codigo:"16451",nombre:"El Dorado - PUEBLO OBRERO",direccion:"Gabriel Pereira s/n",dpto:"MALDONADO"},
+  {codigo:"16551",nombre:"El Dorado - DURAZNO",direccion:"Eusebio Piriz",dpto:"DURAZNO"},
+  {codigo:"16751",nombre:"EL DORADO SALTO",direccion:"AV.ARMANDO DE BARBIERI ESQ, L.A DE HERRERA E INVERNIZI",dpto:"SALTO"},
+  {codigo:"16951",nombre:"El Dorado - SAN RAMON 1",direccion:"JOSE BATLLE Y ORDONEZ 1402",dpto:"CANELONES"},
+  {codigo:"17151",nombre:"EL DORADO - ECILDA PAULLIER",direccion:"J. GERVASIO ARTIGAS 1576 ESQ. ZIEGLER",dpto:"SAN JOSE"},
+  {codigo:"17251",nombre:"El Dorado - San Ramon 2",direccion:"JOSE BATLLE Y ORDONEZ 2623",dpto:"CANELONES"},
+  {codigo:"17351",nombre:"El Dorado - NUEVA HELVECIA",direccion:"FRAU VOGEL 1090",dpto:"COLONIA"},
+];
+
+function filtrarDirectorio() {
+  const q = (document.getElementById('dir-search').value || '').toLowerCase().trim();
+  const dpto = document.getElementById('dir-dpto').value;
+  const filtrados = LOCALES_POLAKOF.filter(l => {
+    const matchDpto = !dpto || l.dpto === dpto;
+    const matchQ = !q ||
+      l.nombre.toLowerCase().includes(q) ||
+      l.direccion.toLowerCase().includes(q) ||
+      l.codigo.includes(q);
+    return matchDpto && matchQ;
+  });
+  renderDirectorio(filtrados);
+}
+
+async function renderDirectorio(lista) {
+  const grid = document.getElementById('dir-grid');
+  document.getElementById('dir-count').textContent = `${lista.length} local${lista.length !== 1 ? 'es' : ''}`;
+  if (!lista.length) {
+    grid.innerHTML = '<div class="dir-empty">No se encontraron locales con ese criterio.</div>';
+    return;
+  }
+  // Mostrar cards rápido sin badges de historial
+  grid.innerHTML = lista.map(l => `
+    <div class="dir-card" id="dcard-${l.codigo}" onclick='abrirHistorialLocal(${JSON.stringify(l)})'>
+      <div class="dir-card-nombre" title="${l.nombre}">${l.nombre}</div>
+      <div class="dir-card-dir" title="${l.direccion}">
+        <svg style="display:inline;vertical-align:middle;margin-right:3px" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+        ${l.direccion}
+      </div>
+      <div class="dir-card-footer">
+        <span class="dir-badge-dpto">${l.dpto}</span>
+        <div style="display:flex;align-items:center;gap:6px">
+          <span class="dir-hist-badge-wrap" id="hbadge-${l.codigo}"></span>
+          <span class="dir-codigo">#${l.codigo}</span>
+        </div>
+      </div>
+    </div>`).join('');
+
+  // Cargar historial en segundo plano y pintar badges
+  const hist = await cargarHistorial();
+  lista.forEach(l => {
+    const nombreDir = l.nombre.toLowerCase();
+    const palabrasDir = nombreDir.replace(/el dorado\s*-?\s*/i,'').trim().split(/\s+/);
+    const nEnvios = hist.filter(e => {
+      const n = (e.local||'').toLowerCase();
+      return n === nombreDir || palabrasDir.some(p => p.length > 3 && n.includes(p));
+    }).length;
+    const card  = document.getElementById(`dcard-${l.codigo}`);
+    const badge = document.getElementById(`hbadge-${l.codigo}`);
+    if (nEnvios > 0 && card && badge) {
+      card.classList.add('dir-has-hist');
+      badge.innerHTML = `<span class="dir-hist-badge">📦 ${nEnvios} envío${nEnvios>1?'s':''}</span>`;
+    }
+  });
+}
+
+// ─── SEMÁFORO DE STOCK ────────────────────────────────────────────────────
+function actualizarSemaforo(idx, stock, vtaSemanal) {
+  const el = document.getElementById(`sem-${idx}`);
+  if (!el) return;
+  if (stock === null || stock === undefined || isNaN(stock)) {
+    el.className = 'semaforo sem-none'; el.textContent = '—'; return;
+  }
+  const dias = vtaSemanal > 0 ? (stock / vtaSemanal) * 7 : 99;
+  if (dias >= 14)     { el.className = 'semaforo sem-ok';   el.textContent = '✅ OK'; }
+  else if (dias >= 7) { el.className = 'semaforo sem-warn'; el.textContent = '⚠️ Justo'; }
+  else                { el.className = 'semaforo sem-bad';  el.textContent = '🔴 Riesgo'; }
+}
+
+function actualizarTodosSemaforos() {
+  data.forEach((r, idx) => {
+    const el = document.getElementById(`st-${idx}`);
+    const st = el ? parseFloat(el.value) : NaN;
+    actualizarSemaforo(idx, isNaN(st) ? null : st, r.ventas / 4);
+  });
+  verificarAlertas();
+}
+
+function verificarAlertas() {
+  const alertas = [];
+  data.forEach((r, idx) => {
+    if (!estaActivo(r.producto)) return;
+    const el = document.getElementById(`st-${idx}`);
+    if (!el || el.value === '') return;
+    const st = parseFloat(el.value);
+    const vtaSem = r.ventas / 4;
+    const diasCubiertos = vtaSem > 0 ? (st / vtaSem) * 7 : 99;
+    if (diasCubiertos < 7) {
+      alertas.push(`<div class="alerta-item">🔴 <strong>${r.local}</strong> — ${r.producto}: stock cubre solo <strong>${diasCubiertos.toFixed(1)} días</strong></div>`);
+    }
+  });
+  const box = document.getElementById('alertas-quiebre');
+  const list = document.getElementById('alertas-list');
+  if (alertas.length) {
+    list.innerHTML = alertas.join('');
+    box.classList.add('visible');
+  } else {
+    box.classList.remove('visible');
+  }
+}
+// ──────────────────────────────────────────────────────────────────────────
+
+// ─── PDF POR LOCAL ────────────────────────────────────────────────────────
+function abrirModalPDF() {
+  if (!window._ordenFilas) { alert('Primero calculá la orden.'); return; }
+  const locales = window._ordenLocales || [];
+  const list = document.getElementById('pdf-local-list');
+  list.innerHTML = locales.map(l => `
+    <label class="pdf-local-item">
+      <input type="checkbox" name="pdf-loc" value="${l}" checked>
+      <span>${l}</span>
+    </label>`).join('');
+  document.getElementById('modal-pdf').classList.add('open');
+}
+
+function pdfSelAll(val) {
+  document.querySelectorAll('[name="pdf-loc"]').forEach(cb => cb.checked = val);
+}
+
+function generarPDF() {
+  const { jsPDF } = window.jspdf;
+  const seleccionados = [...document.querySelectorAll('[name="pdf-loc"]:checked')].map(cb => cb.value);
+  if (!seleccionados.length) { alert('Seleccioná al menos un local.'); return; }
+
+  const filas = window._ordenFilas || [];
+  const fecha = new Date().toLocaleDateString('es-UY', {day:'2-digit', month:'2-digit', year:'numeric'});
+
+  seleccionados.forEach(local => {
+    const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+    const lf = filas.filter(r => r.local === local && r.sug > 0);
+    if (!lf.length) return;
+
+    // Header
+    doc.setFillColor(45, 106, 79);
+    doc.rect(0, 0, 297, 22, 'F');
+    doc.setTextColor(255,255,255);
+    doc.setFontSize(13); doc.setFont('helvetica','bold');
+    doc.text('ORDEN SUGERIDA — MARUBY S.A. PARA POLAKOF', 14, 10);
+    doc.setFontSize(9); doc.setFont('helvetica','normal');
+    doc.text(`Local: ${local}`, 14, 17);
+    doc.text(`Fecha: ${fecha}`, 230, 17);
+
+    // Totales
+    const totSug = lf.reduce((a,r) => a+r.sug, 0);
+    const totCan = lf.reduce((a,r) => a+(r.canastos||0), 0);
+    doc.setTextColor(0,0,0);
+    doc.setFontSize(9);
+    doc.text(`Total unidades: ${totSug}   |   Total canastos: ${totCan}   |   SKUs con envío: ${lf.length}`, 14, 30);
+
+    // Tabla
+    doc.autoTable({
+      startY: 34,
+      head: [['Producto','Marca','Venta/mes','Stock','Sugerido','Canastos']],
+      body: lf.map(r => [
+        r.producto, r.marca, r.ventas,
+        r.stock !== null ? r.stock : '—',
+        r.sug,
+        r.canastos || '—'
+      ]),
+      styles: { fontSize: 8, cellPadding: 2 },
+      headStyles: { fillColor: [45,106,79], textColor: 255, fontStyle: 'bold' },
+      alternateRowStyles: { fillColor: [245,244,240] },
+      columnStyles: {
+        0: { cellWidth: 90 },
+        2: { halign: 'right' },
+        3: { halign: 'center' },
+        4: { halign: 'right', fontStyle: 'bold' },
+        5: { halign: 'center' }
+      }
+    });
+
+    doc.save(`Orden_${local.replace(/[^a-zA-Z0-9]/g,'_')}_${fecha.replace(/\//g,'-')}.pdf`);
+  });
+
+  document.getElementById('modal-pdf').classList.remove('open');
+  mostrarToast(`✅ ${seleccionados.length} PDF${seleccionados.length>1?'s':''} generado${seleccionados.length>1?'s':''}`);
+}
+// ──────────────────────────────────────────────────────────────────────────
+
+// ─── DASHBOARD ────────────────────────────────────────────────────────────
+let _charts = {};
+
+function initDashboard() {
+  if (!data.length) return;
+  document.getElementById('dash-empty').style.display = 'none';
+  document.getElementById('dash-content').style.display = 'block';
+
+  const filas = window._ordenFilas || data.map(r => ({...r, sug: r.ventas + 2, canastos: null}));
+
+  // Stats globales
+  const totalVentas = data.reduce((a,r) => a+r.ventas, 0);
+  const totalSug    = filas.reduce((a,r) => a+r.sug, 0);
+  const locales     = [...new Set(data.map(r => r.local))];
+  const skus        = [...new Set(data.map(r => r.producto))];
+  document.getElementById('dash-stats').innerHTML = `
+    <div class="metric"><div class="metric-val">${totalVentas.toLocaleString()}</div><div class="metric-lbl">Unidades venta/mes</div></div>
+    <div class="metric"><div class="metric-val">${totalSug.toLocaleString()}</div><div class="metric-lbl">Sugerido total</div></div>
+    <div class="metric"><div class="metric-val">${locales.length}</div><div class="metric-lbl">Locales activos</div></div>
+    <div class="metric"><div class="metric-val">${skus.length}</div><div class="metric-lbl">SKUs distintos</div></div>
+  `;
+  document.getElementById('dash-stats').style.display = 'grid';
+
+  // Top 10 SKUs
+  const skuMap = {};
+  data.forEach(r => { skuMap[r.producto] = (skuMap[r.producto]||0) + r.ventas; });
+  const topSkus = Object.entries(skuMap).sort((a,b)=>b[1]-a[1]).slice(0,10);
+  const maxSku = topSkus[0]?.[1] || 1;
+  document.getElementById('dash-ranking-sku').innerHTML = topSkus.map(([nom,val],i) => `
+    <div class="ranking-item">
+      <span class="ranking-pos">${i+1}</span>
+      <span class="ranking-nombre" title="${nom}">${nom}</span>
+      <div class="ranking-bar-wrap"><div class="ranking-bar" style="width:${(val/maxSku*100).toFixed(0)}%"></div></div>
+      <span class="ranking-val">${val}</span>
+    </div>`).join('');
+
+  // Top 10 locales
+  const locMap = {};
+  data.forEach(r => { locMap[r.local] = (locMap[r.local]||0) + r.ventas; });
+  const topLocs = Object.entries(locMap).sort((a,b)=>b[1]-a[1]).slice(0,10);
+  const maxLoc = topLocs[0]?.[1] || 1;
+  document.getElementById('dash-ranking-loc').innerHTML = topLocs.map(([nom,val],i) => `
+    <div class="ranking-item">
+      <span class="ranking-pos">${i+1}</span>
+      <span class="ranking-nombre" title="${nom}">${nom.replace(/El Dorado\s*-\s*/i,'')}</span>
+      <div class="ranking-bar-wrap"><div class="ranking-bar" style="width:${(val/maxLoc*100).toFixed(0)}%"></div></div>
+      <span class="ranking-val">${val}</span>
+    </div>`).join('');
+
+  // Gráfico por presentación
+  const presMap = {};
+  data.forEach(r => {
+    const upc = detectarCanasto(r.producto);
+    const key = upc ? `x${upc} pk` : 'Sin clasificar';
+    presMap[key] = (presMap[key]||0) + r.ventas;
+  });
+  renderChart('chart-presentacion', 'doughnut',
+    Object.keys(presMap), Object.values(presMap),
+    ['#2d6a4f','#40916c','#52b788','#74c69d','#95d5b2','#b7e4c7','#d8f3dc','#a8dadc','#457b9d','#1d3557']
+  );
+
+  // Gráfico por departamento (usando el directorio de locales)
+  const dptoMap = {};
+  data.forEach(r => {
+    const info = LOCALES_POLAKOF.find(l => l.nombre.toLowerCase() === r.local.toLowerCase()
+      || normalizar(l.nombre).includes(normalizar(r.local).replace(/el dorado\s*-?\s*/,'').trim().split(' ')[0]));
+    const dpto = info ? info.dpto : 'Otros';
+    dptoMap[dpto] = (dptoMap[dpto]||0) + r.ventas;
+  });
+  const dptoSorted = Object.entries(dptoMap).sort((a,b)=>b[1]-a[1]);
+  renderChart('chart-dptos', 'bar',
+    dptoSorted.map(d=>d[0]), dptoSorted.map(d=>d[1]),
+    '#2d6a4f'
+  );
+
+  // Quiebres
+  const quiebres = [];
+  data.forEach((r, idx) => {
+    const el = document.getElementById(`st-${idx}`);
+    if (!el || el.value === '') return;
+    const st = parseFloat(el.value);
+    const vtaSem = r.ventas / 4;
+    const dias = vtaSem > 0 ? (st/vtaSem)*7 : 99;
+    if (dias < 7) quiebres.push({local: r.local, producto: r.producto, dias});
+  });
+  const qEl = document.getElementById('dash-quiebres');
+  if (quiebres.length) {
+    qEl.innerHTML = quiebres.map(q => `
+      <div class="ranking-item">
+        <span class="semaforo sem-bad" style="flex-shrink:0">🔴</span>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:11px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${q.producto}</div>
+          <div style="font-size:10px;color:var(--text-muted)">${q.local.replace(/El Dorado\s*-\s*/i,'')}</div>
+        </div>
+        <span style="font-family:'DM Mono',monospace;font-size:11px;color:var(--red);font-weight:700">${q.dias.toFixed(1)}d</span>
+      </div>`).join('');
+  } else {
+    qEl.innerHTML = '<div style="text-align:center;padding:2rem;color:var(--text-muted);font-size:12px">✅ Sin quiebres detectados</div>';
+  }
+}
+
+function renderChart(id, tipo, labels, values, color) {
+  const ctx = document.getElementById(id);
+  if (!ctx) return;
+  if (_charts[id]) { _charts[id].destroy(); }
+  _charts[id] = new Chart(ctx, {
+    type: tipo,
+    data: {
+      labels,
+      datasets: [{
+        data: values,
+        backgroundColor: Array.isArray(color) ? color : color,
+        borderColor: tipo === 'bar' ? color : 'white',
+        borderWidth: tipo === 'bar' ? 0 : 2,
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: { display: tipo === 'doughnut', position: 'right', labels: { font: { size: 11 }, padding: 10 } }
+      },
+      scales: tipo === 'bar' ? {
+        y: { beginAtZero: true, grid: { color: '#e2e0d8' }, ticks: { font: { size: 10 } } },
+        x: { grid: { display: false }, ticks: { font: { size: 10 }, maxRotation: 30 } }
+      } : {}
+    }
+  });
+}
+// ──────────────────────────────────────────────────────────────────────────
+
+let frData = [];
+
+function frRecalc() {
+  const qSolic   = parseFloat(document.getElementById('fr-qsolic').value)  || 0;
+  const qEntreg  = parseFloat(document.getElementById('fr-qentreg').value) || 0;
+  const stck     = parseFloat(document.getElementById('fr-stck').value)    || 0;
+  const vtaMes   = parseFloat(document.getElementById('fr-vtames').value)  || 0;
+  const frec     = parseFloat(document.getElementById('fr-frec').value)    || 1;
+
+  const noEntreg  = qSolic - qEntreg;
+  const fillRate  = qSolic > 0 ? (qEntreg / qSolic) : 0;
+  const vtaSem    = vtaMes / 4;
+  const sugerido  = (vtaSem / frec) + (vtaSem / 7);
+  const stkSugSeg = vtaSem / frec;
+
+  document.getElementById('fr-c-noentreg').textContent    = noEntreg;
+  document.getElementById('fr-c-fillrate').textContent    = (fillRate*100).toFixed(1) + '%';
+  document.getElementById('fr-c-vtasem').textContent      = vtaSem.toFixed(2);
+  document.getElementById('fr-c-sugerido').textContent    = sugerido.toFixed(2);
+  document.getElementById('fr-c-stksugerido').textContent = stkSugSeg.toFixed(2);
+  const el = document.getElementById('fr-c-fillrate');
+  el.style.color = fillRate >= 0.9 ? '#4ade80' : fillRate >= 0.6 ? '#facc15' : '#f87171';
+}
+
+async function frGuardar() {
+  const fecha   = document.getElementById('fr-fecha').value;
+  const cadena  = document.getElementById('fr-cadena').value.trim();
+  const local   = document.getElementById('fr-local').value.trim();
+  const frec    = parseFloat(document.getElementById('fr-frec').value) || 1;
+  const ocNo    = document.getElementById('fr-oc').value.trim();
+  const sku     = document.getElementById('fr-sku').value.trim();
+  const qSolic  = parseFloat(document.getElementById('fr-qsolic').value)  || 0;
+  const qEntreg = parseFloat(document.getElementById('fr-qentreg').value) || 0;
+  const stck    = parseFloat(document.getElementById('fr-stck').value)    || 0;
+  const vtaMes  = parseFloat(document.getElementById('fr-vtames').value)  || 0;
+
+  if (!fecha || !cadena || !local || !sku) { alert('Completá al menos: Fecha, Cadena, Local y SKU'); return; }
+
+  const vtaSem    = vtaMes / 4;
+  const noEntreg  = qSolic - qEntreg;
+  const fillRate  = qSolic > 0 ? qEntreg / qSolic : 0;
+  const sugerido  = (vtaSem / frec) + (vtaSem / 7);
+  const stkSugSeg = vtaSem / frec;
+
+  const fila = {
+    fecha, cadena, local: Number(local), frecEntr: frec, ocNo, skuSolic: Number(sku),
+    qSolic, qEntreg, qNoEntreg: noEntreg, fillRate,
+    quiebre:        document.getElementById('fr-quiebre').checked  ? 'X' : '',
+    pedidoExcedido: document.getElementById('fr-excedido').checked ? 'X' : '',
+    otros:          document.getElementById('fr-otros').checked    ? (document.getElementById('fr-otros-txt').value||'X') : '',
+    stckRelev: stck, vtaUltMes: vtaMes, vtaSem, pedidoSugerido: sugerido, stkSugeridoSeg: stkSugSeg
+  };
+
+  const btn = document.querySelector('[onclick="frGuardar()"]');
+  btn.disabled = true;
+  try {
+    const res = await fetch(GS_URL, { method:'POST', body: JSON.stringify({tipo:'fillrate', filas:[fila]}) });
+    const d = await res.json();
+    if (d.ok) {
+      mostrarToast('✅ Registro guardado en Sheets');
+      frData.unshift(fila);
+      frRenderTabla(frData);
+      frRenderStats(frData);
+      ['fr-oc','fr-sku','fr-qsolic','fr-qentreg','fr-stck','fr-vtames','fr-otros-txt'].forEach(id => document.getElementById(id).value = '');
+      ['fr-quiebre','fr-excedido','fr-otros'].forEach(id => document.getElementById(id).checked = false);
+      frRecalc();
+    } else { alert('Error al guardar en Sheets'); }
+  } catch(e) { alert('No se pudo conectar con Sheets: ' + e.message); }
+  finally { btn.disabled = false; }
+}
+
+async function frCargarHistorial() {
+  const tbody = document.getElementById('fr-tbody');
+  tbody.innerHTML = `<tr><td colspan="14" style="text-align:center;padding:2rem;color:var(--text-muted)">⏳ Cargando…</td></tr>`;
+  try {
+    const res = await fetch(GS_URL + '?tipo=fillrate');
+    frData = await res.json();
+    frRenderTabla(frData);
+    frRenderStats(frData);
+  } catch(e) {
+    tbody.innerHTML = `<tr><td colspan="14" style="text-align:center;padding:2rem;color:#f87171">Error: ${e.message}</td></tr>`;
+  }
+}
+
+function frFiltrar() {
+  const fc = document.getElementById('fr-f-cadena').value.toLowerCase();
+  const fl = document.getElementById('fr-f-local').value.toLowerCase();
+  const fs = document.getElementById('fr-f-sku').value.toLowerCase();
+  const fd = document.getElementById('fr-f-desde').value;
+  const fh = document.getElementById('fr-f-hasta').value;
+  const filtrados = frData.filter(r => {
+    if (fc && !(r.cadena||'').toLowerCase().includes(fc)) return false;
+    if (fl && !String(r.local||'').toLowerCase().includes(fl)) return false;
+    if (fs && !String(r.skuSolic||'').toLowerCase().includes(fs)) return false;
+    if (fd && r.fecha < fd) return false;
+    if (fh && r.fecha > fh) return false;
+    return true;
+  });
+  frRenderTabla(filtrados);
+  frRenderStats(filtrados);
+}
+
+function frRenderTabla(rows) {
+  const tbody = document.getElementById('fr-tbody');
+  document.getElementById('fr-f-count').textContent = `${rows.length} registro${rows.length!==1?'s':''}`;
+  if (!rows.length) { tbody.innerHTML = `<tr><td colspan="14" style="text-align:center;padding:2rem;color:var(--text-muted)">Sin registros</td></tr>`; return; }
+  tbody.innerHTML = rows.map(r => {
+    const pct = parseFloat(r.fillRate)||0;
+    const cls = pct>=0.9?'fr-pct-ok':pct>=0.6?'fr-pct-med':'fr-pct-bad';
+    const causa = [r.quiebre?'Quiebre':'', r.pedidoExcedido?'Excedido':'', r.otros||''].filter(Boolean).join(' / ')||'—';
+    const fechaFmt = r.fecha ? new Date(r.fecha).toLocaleDateString('es-UY') : '—';
+    return `<tr>
+      <td>${fechaFmt}</td><td>${r.cadena||'—'}</td>
+      <td style="font-family:'DM Mono',monospace">${r.local||'—'}</td>
+      <td style="font-family:'DM Mono',monospace">${r.ocNo||'—'}</td>
+      <td style="font-family:'DM Mono',monospace">${r.skuSolic||'—'}</td>
+      <td style="text-align:right;font-family:'DM Mono',monospace">${r.qSolic||0}</td>
+      <td style="text-align:right;font-family:'DM Mono',monospace">${r.qEntreg||0}</td>
+      <td style="text-align:right;font-family:'DM Mono',monospace">${r.qNoEntreg||0}</td>
+      <td style="text-align:center" class="${cls}">${(pct*100).toFixed(1)}%</td>
+      <td style="font-size:11px">${causa}</td>
+      <td style="text-align:right;font-family:'DM Mono',monospace">${parseFloat(r.stckRelev||0).toFixed(2)}</td>
+      <td style="text-align:right;font-family:'DM Mono',monospace">${parseFloat(r.vtaUltMes||0).toFixed(2)}</td>
+      <td style="text-align:right;font-family:'DM Mono',monospace">${parseFloat(r.vtaSem||0).toFixed(2)}</td>
+      <td style="text-align:right;font-family:'DM Mono',monospace">${parseFloat(r.pedidoSugerido||0).toFixed(2)}</td>
+    </tr>`;
+  }).join('');
+}
+
+function frRenderStats(rows) {
+  const el = document.getElementById('fr-stats');
+  if (!rows.length) { el.style.display='none'; return; }
+  el.style.display = 'grid';
+  const totSolic  = rows.reduce((a,r) => a+(parseFloat(r.qSolic)||0), 0);
+  const totEntreg = rows.reduce((a,r) => a+(parseFloat(r.qEntreg)||0), 0);
+  const fill      = totSolic > 0 ? totEntreg/totSolic : 0;
+  const color     = fill>=0.9?'#4ade80':fill>=0.6?'#facc15':'#f87171';
+  el.innerHTML = `
+    <div class="metric"><div class="metric-val" style="color:${color}">${(fill*100).toFixed(1)}%</div><div class="metric-lbl">Fill rate global</div></div>
+    <div class="metric"><div class="metric-val">${rows.length}</div><div class="metric-lbl">Registros</div></div>
+    <div class="metric"><div class="metric-val">${rows.filter(r=>r.quiebre).length}</div><div class="metric-lbl">Quiebres</div></div>
+    <div class="metric"><div class="metric-val">${rows.filter(r=>r.pedidoExcedido).length}</div><div class="metric-lbl">Pedidos excedidos</div></div>`;
+}
+// ──────────────────────────────────────────────────────────────────────────
+
+// Inicializar directorio al cargar
+document.addEventListener('DOMContentLoaded', () => {
+  const hoy = new Date().toISOString().split('T')[0];
+  if (document.getElementById('fr-fecha')) document.getElementById('fr-fecha').value = hoy;
+  cargarInactivos().then(() => renderDirectorio(LOCALES_POLAKOF));
+});
+// ──────────────────────────────────────────────────────────────────────────
+</script>
+
+</body>
+</html>
