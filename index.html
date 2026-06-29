@@ -1426,11 +1426,52 @@ function parseScantech(texto) {
   return resultado;
 }
 
+// Parser para el .xlsx de Scantech con varios locales en un archivo.
+// Lee por POSICIÓN de columna: C=local, H=producto (SKU), J=marca, M=cantidad en paquetes.
+function parseScantechXLSX(rows) {
+  if (!rows || rows.length < 2) return null;
+  const iLocal = 2;   // columna C
+  const iProd  = 7;   // columna H
+  const iMarca = 9;   // columna J
+  const iCant  = 12;  // columna M
+  const mapa = {}; // { local: { producto: { ventas, marca } } }
+  let validas = 0;
+  rows.forEach(r => {
+    if (!r) return;
+    const local = (r[iLocal] || '').toString().trim();
+    let prod    = (r[iProd]  || '').toString().trim();
+    const cant  = parseFloat((r[iCant] != null ? r[iCant] : '').toString().replace(',', '.')) || 0;
+    if (!local || !prod || cant <= 0) return; // saltea encabezado y filas vacías/sin venta
+    // Quitar el código de barras del inicio del nombre (ej: "7730239000092 HUEVOS ...")
+    prod = prod.replace(/^\s*\d{6,}\s+/, '').trim();
+    const marca = (r[iMarca] || '').toString().trim();
+    if (!mapa[local]) mapa[local] = {};
+    if (!mapa[local][prod]) mapa[local][prod] = { ventas: 0, marca };
+    mapa[local][prod].ventas += cant;
+    if (!mapa[local][prod].marca && marca) mapa[local][prod].marca = marca;
+    validas++;
+  });
+  if (!validas) return null;
+  const resultado = [];
+  Object.entries(mapa).forEach(([local, prods]) => {
+    Object.entries(prods).forEach(([producto, info]) => {
+      if (info.ventas > 0) {
+        resultado.push({ local, producto, marca: info.marca || '', ventas: Math.round(info.ventas) });
+      }
+    });
+  });
+  return resultado;
+}
+
 function readXLSX(file) {
   const reader = new FileReader();
   reader.onload = ev => {
     const wb = XLSX.read(ev.target.result, { type: 'array' });
     const rows = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { header: 1, defval: '' });
+    // Primero intentar el formato Scantech (columnas C/H/M, varios locales por archivo)
+    const sc = parseScantechXLSX(rows);
+    if (sc && sc.length) { mergeConsolidado(sc); return; }
+    // Respaldo: formato anterior por encabezados, un local por archivo (nombre del archivo = local)
     merge(parseSheet(rows, localName(file.name)));
   };
   reader.readAsArrayBuffer(file);
