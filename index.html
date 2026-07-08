@@ -1077,7 +1077,7 @@
           <div class="upload-title">Arrastrá tu planilla de stock acá o hacé clic</div>
           <div class="upload-sub">.xlsx · .xltx · .csv — un archivo con todos los locales</div>
         </div>
-        <input type="file" id="fi-stock" accept=".csv,.xlsx,.xltx,.xls" style="display:none" onchange="handleStockFile(event.target.files[0])">
+        <input type="file" id="fi-stock" accept=".csv,.xlsx,.xltx,.xls,.ods" style="display:none" onchange="handleStockFile(event.target.files[0])">
 
         <div id="stock-status" style="display:none;margin-top:12px">
           <div class="info-box" id="stock-status-txt" style="background:var(--green-bg);border-color:var(--green);color:var(--green)"></div>
@@ -2047,7 +2047,26 @@ function normalizar(str) {
   return str.toString().toLowerCase()
     .normalize('NFD').replace(/[\u0300-\u036f]/g, '') // quitar tildes
     .replace(/[^\w\s\d]/g, ' ')
-    .replace(/\s+/g, ' ').trim();
+    .replace(/\s+/g, ' ').trim()
+    // unificar "15 un" y "15un" al mismo token, sea cual sea el archivo de origen
+    .replace(/(\d+)\s+(un|uni|und|gr|grs|kg|ml|lt|cc|doc)\b/g, '$1$2')
+    // unificar "x 24" y "x24" al mismo token (formatos de pack: X24, X 24, etc.)
+    .replace(/\bx\s+(\d+)/g, 'x$1')
+    // ignorar la "x" como multiplicador de pack: "x24un" y "24un" deben tratarse igual
+    .replace(/\bx(\d+(un|uni|und|gr|grs|kg|ml|lt|cc|doc))\b/g, '$1');
+}
+
+// true si dos palabras "matchean" considerando abreviaturas con punto (ej: "dorad" ~ "dorado", "cla" ~ "clara")
+function palabraSimilar(a, b) {
+  if (a === b) return true;
+  if (a.length < 3 || b.length < 3) return false;
+  return a.startsWith(b) || b.startsWith(a);
+}
+
+// Extrae el token de cantidad+unidad (ej: "10un", "15un", "24un") de un texto ya normalizado
+function extraerCantidadUnidad(strNorm) {
+  const m = strNorm.match(/\b(\d+)(un|uni|und|gr|grs|kg|ml|lt|cc|doc)\b/);
+  return m ? m[1] + m[2] : null;
 }
 
 function palabrasClave(str) {
@@ -2095,6 +2114,45 @@ function procesarStockCSV(texto, fname) {
   procesarStockRows(rows, fname);
 }
 
+function procesarFilasSAP(filas, fname, iCentro, iArtTexto, iLibreUtil, sinEncabezado) {
+  stockData = {};
+  let cuenta = 0;
+  const sucursalesSinLocal = new Set();
+
+  filas.forEach(r => {
+    const centroRaw = (r[iCentro] || '').toString().trim();
+    if (!centroRaw) return;
+    const centroNum = String(parseInt(centroRaw, 10));
+    const sku = (r[iArtTexto] || '').toString().trim();
+    // "Libre utilización" ya viene expresado en UNIDADES (no en paquetes/cajas) — se carga tal cual
+    const stk = parseFloat((r[iLibreUtil] || '0').toString().replace(',', '.')) || 0;
+    if (!sku) return;
+
+    const localObj = buscarLocalPorSucursal(centroNum);
+    if (!localObj) { sucursalesSinLocal.add(centroNum); return; }
+
+    const localKey = normalizar(localObj.nombre);
+    const skuKey = normalizar(sku);
+    if (!stockData[localKey]) stockData[localKey] = {};
+    stockData[localKey][skuKey] = (stockData[localKey][skuKey] || 0) + stk;
+    cuenta++;
+  });
+
+  if (!cuenta) { alert('No se encontraron filas con datos válidos de stock (columna "Centro" / "Libre utilización").'); return; }
+
+  const locales = Object.keys(stockData).length;
+  const skus    = Object.values(stockData).reduce((a,o) => a + Object.keys(o).length, 0);
+  aplicarStockAlTabla();
+  document.getElementById('stock-status').style.display = 'block';
+  let msg = `✅ Stock cargado desde <strong>${fname}</strong> (formato SAP por Centro/Sucursal${sinEncabezado ? ', sin fila de encabezado' : ''}) — <strong>${locales} locales</strong> · <strong>${skus} SKUs</strong><br>
+   <span style="font-size:11px;opacity:.8">"Libre utilización" cargado tal cual, en unidades</span>`;
+  if (sucursalesSinLocal.size) {
+    msg += `<br><span style="font-size:11px;color:var(--red)">⚠️ ${sucursalesSinLocal.size} sucursal(es) sin local en el directorio, se omitieron: ${[...sucursalesSinLocal].join(', ')}</span>`;
+  }
+  document.getElementById('stock-status-txt').innerHTML = msg;
+  mostrarToast(`✅ Stock cargado: ${locales} locales · ${skus} SKUs` + (sucursalesSinLocal.size ? ` (${sucursalesSinLocal.size} sucursales sin match)` : ''));
+}
+
 function procesarStockRows(rows, fname) {
   if (!rows || rows.length < 2) { alert('El archivo de stock está vacío o no tiene datos.'); return; }
 
@@ -2103,48 +2161,18 @@ function procesarStockRows(rows, fname) {
   const iCentro    = hdrSap.findIndex(h => h === 'centro');
   const iArtTexto  = hdrSap.findIndex(h => h.includes('texto breve'));
   const iLibreUtil = hdrSap.findIndex(h => h.includes('libre utilizaci'));
-  const iUPC       = hdrSap.findIndex(h => h.includes('unidades por caja'));
 
   if (iCentro >= 0 && iArtTexto >= 0 && iLibreUtil >= 0) {
-    stockData = {};
-    let cuenta = 0;
-    const sucursalesSinLocal = new Set();
+    return procesarFilasSAP(rows.slice(1), fname, iCentro, iArtTexto, iLibreUtil);
+  }
 
-    rows.slice(1).forEach(r => {
-      const centroRaw = (r[iCentro] || '').toString().trim();
-      if (!centroRaw) return;
-      const centroNum = String(parseInt(centroRaw, 10));
-      const sku = (r[iArtTexto] || '').toString().trim();
-      const paquetes = parseFloat((r[iLibreUtil] || '0').toString().replace(',', '.')) || 0;
-      // "Libre utilización" viene en paquetes/cajas → convertir a unidades con "Unidades por Cajas" del propio archivo
-      const upcFila = iUPC >= 0 ? (parseFloat((r[iUPC] || '0').toString().replace(',', '.')) || 0) : 0;
-      const stk = upcFila > 0 ? paquetes * upcFila : paquetes;
-      if (!sku) return;
-
-      const localObj = buscarLocalPorSucursal(centroNum);
-      if (!localObj) { sucursalesSinLocal.add(centroNum); return; }
-
-      const localKey = normalizar(localObj.nombre);
-      const skuKey = normalizar(sku);
-      if (!stockData[localKey]) stockData[localKey] = {};
-      stockData[localKey][skuKey] = (stockData[localKey][skuKey] || 0) + stk;
-      cuenta++;
-    });
-
-    if (!cuenta) { alert('No se encontraron filas con datos válidos de stock (columna "Centro" / "Libre utilización").'); return; }
-
-    const locales = Object.keys(stockData).length;
-    const skus    = Object.values(stockData).reduce((a,o) => a + Object.keys(o).length, 0);
-    aplicarStockAlTabla();
-    document.getElementById('stock-status').style.display = 'block';
-    let msg = `✅ Stock cargado desde <strong>${fname}</strong> (formato SAP por Centro/Sucursal) — <strong>${locales} locales</strong> · <strong>${skus} SKUs</strong><br>
-     <span style="font-size:11px;opacity:.8">"Libre utilización" (paquetes) × "Unidades por Cajas" → convertido a unidades</span>`;
-    if (sucursalesSinLocal.size) {
-      msg += `<br><span style="font-size:11px;color:var(--red)">⚠️ ${sucursalesSinLocal.size} sucursal(es) sin local en el directorio, se omitieron: ${[...sucursalesSinLocal].join(', ')}</span>`;
-    }
-    document.getElementById('stock-status-txt').innerHTML = msg;
-    mostrarToast(`✅ Stock cargado: ${locales} locales · ${skus} SKUs` + (sucursalesSinLocal.size ? ` (${sucursalesSinLocal.size} sucursales sin match)` : ''));
-    return;
+  // ── Mismo formato SAP pero SIN fila de encabezado (columnas fijas en el mismo orden:
+  // Grupo art., Artículo, Grupo compras, Texto breve, Centro, Almacén, Proveedor, Nombre1,
+  // Libre utilización, ...). Se detecta si la columna 5 (Centro) de la primera fila es un
+  // número que existe como sucursal en el directorio.
+  const centroPrueba = String(parseInt((rows[0][4] || '').toString().trim(), 10));
+  if (rows[0].length >= 9 && !isNaN(parseInt(centroPrueba, 10)) && buscarLocalPorSucursal(centroPrueba)) {
+    return procesarFilasSAP(rows, fname, 4, 3, 8, true);
   }
 
   // ── Detectar si es el formato "Reporte de SKU" ─────────────────────────
@@ -2254,17 +2282,39 @@ function buscarStockLocal(localNombre) {
 
 function buscarStockSku(localStock, skuNombre) {
   if (!localStock) return null;
-  const s = normalizar(skuNombre);
-  // Exacto primero
+
+  // 0) Productos descontinuados: nunca reciben stock, corta acá sin importar el resto
+  const nombreAppNorm = normalizar(skuNombre);
+  if (PRODUCTOS_DESCONTINUADOS_TEXTO.some(p => normalizar(p) === nombreAppNorm)) return null;
+
+  // 1) Mapeo manual explícito (prioritario) — definido a mano en PRODUCTO_MAPEO
+  for (const nombreApp in PRODUCTO_MAPEO) {
+    if (normalizar(nombreApp) === nombreAppNorm) {
+      const sk = normalizar(PRODUCTO_MAPEO[nombreApp]);
+      return localStock[sk] !== undefined ? localStock[sk] : null;
+    }
+  }
+
+  const s = nombreAppNorm;
+  // Exacto
   if (localStock[s] !== undefined) return localStock[s];
-  // Coincidencia por palabras clave
+  // Coincidencia por palabras clave (tolera abreviaturas: "dorad" ~ "dorado", "cla" ~ "clara")
   const palabras = palabrasClave(s);
+  if (!palabras.length) return null;
+  const cantidadBuscada = extraerCantidadUnidad(s);
   let mejorMatch = null, mejorScore = 0;
   for (const k of Object.keys(localStock)) {
-    const score = palabras.filter(p => k.includes(p)).length;
-    if (score >= Math.max(2, Math.ceil(palabras.length * 0.6)) && score > mejorScore) {
-      mejorScore = score; mejorMatch = k;
-    }
+    // Si ambos textos tienen tamaño de paquete (6un, 15un, etc.) y no coincide, descartar:
+    // evita confundir variantes del mismo producto con distinto tamaño (ej. 10UN vs 15UN)
+    const cantidadCandidato = extraerCantidadUnidad(k);
+    if (cantidadBuscada && cantidadCandidato && cantidadBuscada !== cantidadCandidato) continue;
+
+    const kWords = k.split(' ');
+    const score = palabras.filter(p => kWords.some(w => palabraSimilar(p, w))).length;
+    // 75% de las palabras (no 60%, para evitar que 2 palabras genéricas alcancen el umbral
+    // sin la palabra distintiva; tampoco 100%, para tolerar alguna diferencia menor de redacción)
+    const umbral = Math.max(2, Math.ceil(palabras.length * 0.75));
+    if (score >= umbral && score > mejorScore) { mejorScore = score; mejorMatch = k; }
   }
   return mejorMatch !== null ? localStock[mejorMatch] : null;
 }
@@ -2416,24 +2466,24 @@ function exportarExcel() {
 
 function cargarEjemplo() {
   data = [
-    {local:'Pocitos', producto:'HUEVOS ROSADOS EL DORADO X24 UN',          marca:'EL DORADO',  ventas:35},
-    {local:'Pocitos', producto:'HUEVOS DOÑA CLARA MAPLE ROJO 6 UN', marca:'DOÑA CLARA', ventas:73},
-    {local:'Pocitos', producto:'HUEVOS ROSADOS PK 15 UN',           marca:'EL DORADO',  ventas:120},
-    {local:'Pocitos', producto:'HUEVOS PRODHIN JUMBO ROSADO 12 UN', marca:'PRODHIN',    ventas:1},
-    {local:'Pocitos', producto:'HUEVOS PRODHN MARRON EXTRA 6 UN',   marca:'PRODHIN',    ventas:26},
-    {local:'Pocitos', producto:'HUEVOS ROSADOS 10 UN',              marca:'EL DORADO',  ventas:84},
-    {local:'Pocitos', producto:'HUEVOS PRODHIN ROSADOS MAPLES 15 UN',marca:'PRODHIN',   ventas:18},
-    {local:'Prado',   producto:'HUEVOS ROSADOS EL DORADO X24 UN',           marca:'EL DORADO',  ventas:20},
-    {local:'Prado',   producto:'HUEVOS DOÑA CLARA MAPLE ROJO 6 UN', marca:'DOÑA CLARA', ventas:50},
-    {local:'Prado',   producto:'HUEVOS ROSADOS PK 15 UN',           marca:'EL DORADO',  ventas:88},
-    {local:'Prado',   producto:'HUEVOS PRODHIN JUMBO ROSADO 12 UN', marca:'PRODHIN',    ventas:5},
-    {local:'Prado',   producto:'HUEVOS PRODHN MARRON EXTRA 6 UN',   marca:'PRODHIN',    ventas:15},
-    {local:'Prado',   producto:'HUEVOS ROSADOS 10 UN',              marca:'EL DORADO',  ventas:62},
-    {local:'Malvín',  producto:'HUEVOS ROSADOS EL DORADO X24 UN',           marca:'EL DORADO',  ventas:42},
-    {local:'Malvín',  producto:'HUEVOS DOÑA CLARA MAPLE ROJO 6 UN', marca:'DOÑA CLARA', ventas:85},
-    {local:'Malvín',  producto:'HUEVOS ROSADOS PK 15 UN',           marca:'EL DORADO',  ventas:145},
-    {local:'Malvín',  producto:'HUEVOS PRODHN MARRON EXTRA 6 UN',   marca:'PRODHIN',    ventas:30},
-    {local:'Malvín',  producto:'HUEVOS ROSADOS 10 UN',              marca:'EL DORADO',  ventas:98},
+    {local:'El Dorado - RIO BRANCO', producto:'HUEVOS ROSADOS EL DORADO X 24 UN',          marca:'EL DORADO',  ventas:35},
+    {local:'El Dorado - RIO BRANCO', producto:'HUEVOS DOÑA CLARA MAPLE ROJO 6 UN', marca:'DOÑA CLARA', ventas:73},
+    {local:'El Dorado - RIO BRANCO', producto:'HUEVOS ROSADOS PK 15 UN',           marca:'EL DORADO',  ventas:120},
+    {local:'El Dorado - RIO BRANCO', producto:'HUEVOS PRODHIN JUMBO ROSADO 12 UN', marca:'PRODHIN',    ventas:1},
+    {local:'El Dorado - RIO BRANCO', producto:'HUEVOS PRODHN MARRON EXTRA 6 UN',   marca:'PRODHIN',    ventas:26},
+    {local:'El Dorado - RIO BRANCO', producto:'HUEVOS ROSADOS 10 UN',              marca:'EL DORADO',  ventas:84},
+    {local:'El Dorado - RIO BRANCO', producto:'HUEVOS PRODHIN ROSADOS MAPLES 15 UN',marca:'PRODHIN',   ventas:18},
+    {local:'El Dorado - MERCADO 18',   producto:'HUEVOS ROSADOS EL DORADO X 24 UN',           marca:'EL DORADO',  ventas:20},
+    {local:'El Dorado - MERCADO 18',   producto:'HUEVOS DOÑA CLARA MAPLE ROJO 6 UN', marca:'DOÑA CLARA', ventas:50},
+    {local:'El Dorado - MERCADO 18',   producto:'HUEVOS ROSADOS PK 15 UN',           marca:'EL DORADO',  ventas:88},
+    {local:'El Dorado - MERCADO 18',   producto:'HUEVOS PRODHIN JUMBO ROSADO 12 UN', marca:'PRODHIN',    ventas:5},
+    {local:'El Dorado - MERCADO 18',   producto:'HUEVOS PRODHN MARRON EXTRA 6 UN',   marca:'PRODHIN',    ventas:15},
+    {local:'El Dorado - MERCADO 18',   producto:'HUEVOS ROSADOS 10 UN',              marca:'EL DORADO',  ventas:62},
+    {local:'El Dorado - SARANDI GRANDE',  producto:'HUEVOS ROSADOS EL DORADO X 24 UN',           marca:'EL DORADO',  ventas:42},
+    {local:'El Dorado - SARANDI GRANDE',  producto:'HUEVOS DOÑA CLARA MAPLE ROJO 6 UN', marca:'DOÑA CLARA', ventas:85},
+    {local:'El Dorado - SARANDI GRANDE',  producto:'HUEVOS ROSADOS PK 15 UN',           marca:'EL DORADO',  ventas:145},
+    {local:'El Dorado - SARANDI GRANDE',  producto:'HUEVOS PRODHN MARRON EXTRA 6 UN',   marca:'PRODHIN',    ventas:30},
+    {local:'El Dorado - SARANDI GRANDE',  producto:'HUEVOS ROSADOS 10 UN',              marca:'EL DORADO',  ventas:98},
   ];
   render();
 }
@@ -2599,6 +2649,28 @@ async function refrescarBadgesHistorial() {
 
 
 // ─── DIRECTORIO LOCALES POLAKOF ───────────────────────────────────────────
+// Mapeo manual: nombre del producto tal cual aparece en la APP (ventas) → nombre tal cual aparece
+// en el archivo de STOCK (SAP). Prioritario sobre el matching automático por palabras.
+// HUEVO PRODHIN ROSADO 25UN: descontinuado (sin producto correspondiente en la app), no se mapea.
+const PRODUCTO_MAPEO = {
+  "HUEVOS PRODHIN PRIMIUN ROSADOS 12 UN": "HUEVO PRODHIN PREMIUM COLOR X12",
+  "HUEVOS DOÑA CLARA MAPLE ROJO 6 UN": "HUEVOS DOÑA CLA.COLORADOS 6UN",
+  "HUEVOS ROSADOS PK 15 UN": "HUEVOS EL DORAD.COLORADOS MEDIANOS 15UN",
+  "HUEVOS ROSADOS 10 UN": "HUEVOS EL DORAD.MAPLE 10UN",
+  "HUEVOS ROSADOS EL DORADO X24 UN": "HUEVOS EL DORAD.X24 UN",
+  "HUEVOS PRODHIN JUMBO ROSADO 12 UN": "HUEVOS PRODHIN JUMBO MARRON 12UN",
+  "HUEVOS PRODHIN ROSADOS MAPLES 15 UN": "HUEVOS PRODHIN MARRON 15UN",
+  "HUEVOS PRODHN MARRON EXTRA 6 UN": "HUEVOS PRODHIN MARRON 6UN",
+};
+
+// Productos descontinuados: nunca deben recibir stock, ni por mapeo manual ni por matching
+// automático (evita que se confundan por similitud de nombre con productos vigentes, ej.
+// "PK 30 UN" con "PK 15 UN").
+const PRODUCTOS_DESCONTINUADOS_TEXTO = [
+  "HUEVOS ROSADOS PK 30 UN",
+  "HUEVO PRODHIN ROSADO 25UN",
+];
+
 const LOCALES_POLAKOF = [
   {codigo:"1851",sucursal:"1610",nombre:"El Dorado - RIO BRANCO",direccion:"VIRREY ARREDONDO Y VAPOR CEBOLLATI",dpto:"CERRO LARGO"},
   {codigo:"1951",sucursal:"150",nombre:"El Dorado - MERCADO 18",direccion:"DODERA 882",dpto:"MALDONADO"},
@@ -2655,7 +2727,7 @@ const LOCALES_POLAKOF = [
   {codigo:"14451",sucursal:"",nombre:"El Dorado - MELO MAYORISTA",direccion:"REMIGIO CASTELLANOS 1106",dpto:"CERRO LARGO"},
   {codigo:"14551",sucursal:"1710",nombre:"El Dorado - Paysandu",direccion:"AV. BVAR ARTIGAS 5242 ESQ SALTO",dpto:"PAYSANDU"},
   {codigo:"14651",sucursal:"1810",nombre:"El Dorado - CARDONA",direccion:"LIBERTAD ESQ. FLORENCIO SANCHEZ",dpto:"SORIANO"},
-  {codigo:"14751",sucursal:"2025",nombre:"El Dorado - OKI MARKET",direccion:"Montevideo",dpto:"MONTEVIDEO"},
+  {codigo:"14751",sucursal:"2025",nombre:"El Dorado - OKI MARKET",direccion:"MINAS Y CONSTITUYENTE",dpto:"MONTEVIDEO"},
   {codigo:"14851",sucursal:"2310",nombre:"El Dorado - FRAY BENTOS",direccion:"ZORRILLA DE SAN MARTIN, ESQ. BEAULIEU",dpto:"RIO NEGRO"},
   {codigo:"14951",sucursal:"2210",nombre:"El Dorado - Colonia",direccion:"AV. JOSE BATLLE Y ORDONEZ Y RUTA 21",dpto:"COLONIA"},
   {codigo:"15051",sucursal:"167",nombre:"El Dorado - BALNEARIO BS AS",direccion:"CALLE 49 Y 25 - BALRIO. BUENOS AIRES",dpto:"MALDONADO"},
