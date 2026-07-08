@@ -2098,6 +2098,55 @@ function procesarStockCSV(texto, fname) {
 function procesarStockRows(rows, fname) {
   if (!rows || rows.length < 2) { alert('El archivo de stock está vacío o no tiene datos.'); return; }
 
+  // ── Formato SAP "Centro / Artículo / Libre utilización" (por número de sucursal) ──
+  const hdrSap = rows[0].map(c => (c||'').toString().toLowerCase().trim());
+  const iCentro    = hdrSap.findIndex(h => h === 'centro');
+  const iArtTexto  = hdrSap.findIndex(h => h.includes('texto breve'));
+  const iLibreUtil = hdrSap.findIndex(h => h.includes('libre utilizaci'));
+  const iUPC       = hdrSap.findIndex(h => h.includes('unidades por caja'));
+
+  if (iCentro >= 0 && iArtTexto >= 0 && iLibreUtil >= 0) {
+    stockData = {};
+    let cuenta = 0;
+    const sucursalesSinLocal = new Set();
+
+    rows.slice(1).forEach(r => {
+      const centroRaw = (r[iCentro] || '').toString().trim();
+      if (!centroRaw) return;
+      const centroNum = String(parseInt(centroRaw, 10));
+      const sku = (r[iArtTexto] || '').toString().trim();
+      const paquetes = parseFloat((r[iLibreUtil] || '0').toString().replace(',', '.')) || 0;
+      // "Libre utilización" viene en paquetes/cajas → convertir a unidades con "Unidades por Cajas" del propio archivo
+      const upcFila = iUPC >= 0 ? (parseFloat((r[iUPC] || '0').toString().replace(',', '.')) || 0) : 0;
+      const stk = upcFila > 0 ? paquetes * upcFila : paquetes;
+      if (!sku) return;
+
+      const localObj = buscarLocalPorSucursal(centroNum);
+      if (!localObj) { sucursalesSinLocal.add(centroNum); return; }
+
+      const localKey = normalizar(localObj.nombre);
+      const skuKey = normalizar(sku);
+      if (!stockData[localKey]) stockData[localKey] = {};
+      stockData[localKey][skuKey] = (stockData[localKey][skuKey] || 0) + stk;
+      cuenta++;
+    });
+
+    if (!cuenta) { alert('No se encontraron filas con datos válidos de stock (columna "Centro" / "Libre utilización").'); return; }
+
+    const locales = Object.keys(stockData).length;
+    const skus    = Object.values(stockData).reduce((a,o) => a + Object.keys(o).length, 0);
+    aplicarStockAlTabla();
+    document.getElementById('stock-status').style.display = 'block';
+    let msg = `✅ Stock cargado desde <strong>${fname}</strong> (formato SAP por Centro/Sucursal) — <strong>${locales} locales</strong> · <strong>${skus} SKUs</strong><br>
+     <span style="font-size:11px;opacity:.8">"Libre utilización" (paquetes) × "Unidades por Cajas" → convertido a unidades</span>`;
+    if (sucursalesSinLocal.size) {
+      msg += `<br><span style="font-size:11px;color:var(--red)">⚠️ ${sucursalesSinLocal.size} sucursal(es) sin local en el directorio, se omitieron: ${[...sucursalesSinLocal].join(', ')}</span>`;
+    }
+    document.getElementById('stock-status-txt').innerHTML = msg;
+    mostrarToast(`✅ Stock cargado: ${locales} locales · ${skus} SKUs` + (sucursalesSinLocal.size ? ` (${sucursalesSinLocal.size} sucursales sin match)` : ''));
+    return;
+  }
+
   // ── Detectar si es el formato "Reporte de SKU" ─────────────────────────
   // Buscar la fila de encabezado real (puede estar en fila 16 aprox)
   let hdrIdx = -1;
@@ -2631,6 +2680,9 @@ const LOCALES_POLAKOF = [
   {codigo:"17551",sucursal:"1920",nombre:"El Dorado - SHANGRILA",direccion:"",dpto:"CANELONES"},
   {codigo:"17651",sucursal:"2320",nombre:"El Dorado - FRAY BENTOS 2",direccion:"CORONILLA 2551",dpto:"RIO NEGRO"},
   {codigo:"17751",sucursal:"2051",nombre:"El Dorado - SAYAGO",direccion:"GARZON",dpto:"MONTEVIDEO"},
+  {codigo:"17851",sucursal:"128",nombre:"El Dorado - PUNTA DEL ESTE PARADA 2 (2)",direccion:"",dpto:"MALDONADO"},
+  {codigo:"17951",sucursal:"1621",nombre:"El Dorado - MELO DEPOSITO",direccion:"",dpto:"CERRO LARGO"},
+  {codigo:"18051",sucursal:"2020",nombre:"El Dorado - CENTRO (YI Y 18 DE JULIO)",direccion:"YI 1369 ESQ. 18 DE JULIO",dpto:"MONTEVIDEO"},
 ];
 
 // Busca un local del directorio a partir de su número de "Sucursal"
@@ -2648,7 +2700,8 @@ function filtrarDirectorio() {
     const matchQ = !q ||
       l.nombre.toLowerCase().includes(q) ||
       l.direccion.toLowerCase().includes(q) ||
-      l.codigo.includes(q);
+      l.codigo.includes(q) ||
+      (l.sucursal || '').includes(q);
     return matchDpto && matchQ;
   });
   renderDirectorio(filtrados);
@@ -2673,6 +2726,7 @@ async function renderDirectorio(lista) {
         <span class="dir-badge-dpto">${l.dpto}</span>
         <div style="display:flex;align-items:center;gap:6px">
           <span class="dir-hist-badge-wrap" id="hbadge-${l.codigo}"></span>
+          ${l.sucursal ? `<span class="dir-codigo" style="background:var(--blue-bg);color:var(--blue)" title="Número de sucursal">Suc. ${l.sucursal}</span>` : ''}
           <span class="dir-codigo">#${l.codigo}</span>
         </div>
       </div>
