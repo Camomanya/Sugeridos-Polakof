@@ -1282,6 +1282,8 @@ function toggleSeguridad(activo) {
     ? '+ 1 canasto de seguridad incluido en cada sugerido'
     : 'Suma 1 canasto extra al sugerido de cada producto';
   mostrarToast(activo ? '🧺 Stock de seguridad activado (+1 canasto)' : '📦 Stock de seguridad desactivado');
+  // Refrescar el sugerido de todas las filas visibles con el nuevo extra aplicado
+  data.forEach((_, idx) => { if (document.getElementById(`sug-${idx}`)) actualizarSugeridoUI(idx); });
 }
 
 // ─── LÓGICA DE CANASTOS ────────────────────────────────────────────────────
@@ -1321,8 +1323,8 @@ function detectarCanasto(nombreProducto) {
 // Dado un sugerido "crudo", devuelve { canastos, sugAjustado }
 // sugAjustado es el múltiplo de canasto hacia arriba
 function calcCanastos(nombreProducto, sugCrudo) {
-  if (sugCrudo <= 0) return { canastos: 0, sugAjustado: 0, upc: null };
   const upc = detectarCanasto(nombreProducto);
+  if (sugCrudo <= 0) return { canastos: 0, sugAjustado: 0, upc };
   if (upc === null) return { canastos: null, sugAjustado: sugCrudo, upc: null };
   const canastos = Math.ceil(sugCrudo / upc);
   const sugAjustado = canastos * upc;
@@ -1589,6 +1591,7 @@ function onSegProdToggle(idx, nombre, activo) {
     qtyEl?.classList.remove('visible');
     labelEl?.classList.remove('visible');
   }
+  actualizarSugeridoUI(idx);
 }
 
 function onSegProdQty(idx, nombre, val) {
@@ -1596,9 +1599,55 @@ function onSegProdQty(idx, nombre, val) {
   if (segProducto[nombre] !== undefined) {
     segProducto[nombre] = cant;
   }
+  actualizarSugeridoUI(idx);
 }
 // ──────────────────────────────────────────────────────────────────────────
 // ──────────────────────────────────────────────────────────────────────────
+
+// Calcula el sugerido de una fila (por índice de data[]), incluyendo el extra de
+// stock de seguridad (individual del producto o global). Se usa tanto para refrescar
+// la UI en vivo como para el cálculo final al exportar.
+function calcularSugeridoFila(idx) {
+  const r = data[idx];
+  const stEl  = document.getElementById(`st-${idx}`);
+  const stVal = stEl ? stEl.value.trim() : '';
+  const st    = stVal !== '' ? parseFloat(stVal) : NaN;
+
+  const sugCrudo = isNaN(st) ? (r.ventas + 2) : Math.max(0, r.ventas - st + 2);
+  const info = calcCanastos(r.producto, sugCrudo);
+
+  // Prioridad: seg individual del producto (si está activo) > seg global (+1 canasto)
+  let canastosExtra = 0;
+  const segIndiv = segProducto[r.producto];
+  if (segIndiv !== undefined && segIndiv > 0) canastosExtra = segIndiv;
+  else if (stockSeguridad) canastosExtra = 1;
+
+  let sugFinal = info.sugAjustado;
+  let canastosFinal = info.canastos;
+  const tieneUpc = info.upc !== null;
+  // El extra se suma SIEMPRE que haya UPC conocido, incluso si el sugerido base es 0
+  // (caso típico: ya hay stock de sobra, pero se quiere cubrir una oferta igual)
+  if (canastosExtra > 0 && tieneUpc) {
+    sugFinal      = sugFinal + (canastosExtra * info.upc);
+    canastosFinal = (canastosFinal || 0) + canastosExtra;
+  }
+  return { st: isNaN(st) ? null : st, sugFinal, canastosFinal, upc: info.upc, tieneUpc, canastosExtra };
+}
+
+// Refresca en pantalla la celda "Sugerido" + badge de canastos + semáforo de una fila
+function actualizarSugeridoUI(idx) {
+  const sugEl = document.getElementById(`sug-${idx}`);
+  if (!sugEl) return; // fila no visible (ej. local colapsado no afecta, pero por las dudas)
+  const r = data[idx];
+  const info = calcularSugeridoFila(idx);
+  sugEl.textContent = info.sugFinal;
+  const tr = sugEl.closest('tr');
+  if (tr) tr.classList.toggle('zero', info.sugFinal === 0);
+  sugEl.style.color = info.sugFinal === 0 ? 'var(--text-muted)' : info.sugFinal < r.ventas ? 'var(--green)' : 'var(--text)';
+  const canEl = document.getElementById(`can-${idx}`);
+  if (canEl) canEl.innerHTML = canastoBadge({ canastos: info.canastosFinal, sugAjustado: info.sugFinal, upc: info.upc });
+  actualizarSemaforo(idx, info.st, r.ventas / 4);
+}
 
 function render() {
   const locales = [...new Set(data.map(r => r.local))];
@@ -1690,16 +1739,7 @@ function render() {
         </td>
       `;
       tr.querySelector(`#st-${idx}`).addEventListener('input', function () {
-        const st = parseFloat(this.value);
-        const sugCrudo = isNaN(st) ? (r.ventas + 2) : Math.max(0, r.ventas - st + 2);
-        const info = calcCanastos(r.producto, sugCrudo);
-        const sugEl = document.getElementById(`sug-${idx}`);
-        sugEl.textContent = info.sugAjustado;
-        tr.classList.toggle('zero', info.sugAjustado === 0);
-        sugEl.style.color = info.sugAjustado === 0 ? 'var(--text-muted)' : info.sugAjustado < r.ventas ? 'var(--green)' : 'var(--text)';
-        document.getElementById(`can-${idx}`).innerHTML = canastoBadge(info);
-        // Actualizar semáforo
-        actualizarSemaforo(idx, isNaN(st) ? null : st, vtaSemanal);
+        actualizarSugeridoUI(idx);
       });
       tbody.appendChild(tr);
     });
@@ -2395,11 +2435,13 @@ function calcular() {
     let sugFinal = info.sugAjustado;
     let canastosFinal = info.canastos;
     const tieneUpc = info.upc !== null;
-    if (canastosExtra > 0 && tieneUpc && canastosFinal !== null && sugFinal > 0) {
+    // El extra se suma SIEMPRE que haya UPC conocido, incluso si el sugerido base es 0
+    // (caso típico: ya hay stock de sobra, pero se quiere cubrir una oferta igual)
+    if (canastosExtra > 0 && tieneUpc) {
       sugFinal      = sugFinal + (canastosExtra * info.upc);
-      canastosFinal = canastosFinal + canastosExtra;
+      canastosFinal = (canastosFinal || 0) + canastosExtra;
     }
-    const modSeg = canastosExtra > 0 && tieneUpc && canastosFinal !== null;
+    const modSeg = canastosExtra > 0 && tieneUpc;
     return { ...r, stock: st, sug: sugFinal, canastos: canastosFinal, upc: info.upc,
              conSeg: modSeg, canastosExtra, segEsIndiv: segIndiv !== undefined };
   });
